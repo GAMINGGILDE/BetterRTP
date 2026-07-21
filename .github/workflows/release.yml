@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v7
+
+      - name: Java 25 einrichten
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Release-Version ermitteln
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="${GITHUB_REF_NAME}"
+          if [[ ! "${tag}" =~ ^v[0-9]+\.[0-9]+(\.[0-9]+)?([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Release-Tags müssen beispielsweise v3.7, v4.0.0 oder v4.0.0-rc.1 entsprechen; erhalten: '${tag}'." >&2
+            exit 1
+          fi
+
+          version="${tag#v}"
+          project_version="$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)"
+          if [[ "${project_version}" != "${version}" ]]; then
+            echo "Tag-Version '${version}' stimmt nicht mit der Projektversion '${project_version}' überein." >&2
+            exit 1
+          fi
+
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+      - name: Release-JAR bauen
+        run: mvn clean package --batch-mode --no-transfer-progress
+
+      - name: Release-Dateien vorbereiten
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${{ steps.release.outputs.version }}"
+          mkdir -p release
+          cp "target/BetterRTP-${version}.jar" "release/BetterRTP-${version}.jar"
+          cd release
+          sha256sum "BetterRTP-${version}.jar" > "BetterRTP-${version}.jar.sha256"
+
+      - name: GitHub Release erstellen oder aktualisieren
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="${{ steps.release.outputs.tag }}"
+          version="${{ steps.release.outputs.version }}"
+
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            gh release upload "${tag}" release/* --clobber
+          else
+            gh release create "${tag}" release/* \
+              --title "BetterRTP ${version}" \
+              --generate-notes
+          fi

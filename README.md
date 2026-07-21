@@ -47,6 +47,12 @@ target/BetterRTP-3.7.jar
 
 `mvn test` prüft derzeit die Kompilierung und den Build. Das Projekt enthält aktuell noch keine automatisierten Unit- oder Integrationstests.
 
+## Veröffentlichungen
+
+Versionierte Builds stehen unter [GitHub Releases](https://github.com/GAMINGGILDE/BetterRTP/releases) bereit. Ein Git-Tag im Format `v3.7`, `v4.0.0` oder `v4.0.0-rc.1` startet automatisch einen reproduzierbaren Release-Build. Das GitHub Release enthält die fertige Plugin-JAR und eine Datei mit ihrer SHA-256-Prüfsumme.
+
+Die Version im Tag ohne das führende `v` muss exakt mit der Version in der `pom.xml` übereinstimmen.
+
 ### Entwicklungsprofil
 
 Das optionale Profil `dev` schreibt die erzeugte Core-JAR in das lokale Plugin-Verzeichnis, das in der `pom.xml` konfiguriert ist:
