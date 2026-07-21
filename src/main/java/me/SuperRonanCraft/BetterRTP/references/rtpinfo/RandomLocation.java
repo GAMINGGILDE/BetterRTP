@@ -1,6 +1,5 @@
 package me.SuperRonanCraft.BetterRTP.references.rtpinfo;
 
-import io.papermc.lib.PaperLib;
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.RTPWorld;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WORLD_TYPE;
@@ -158,7 +157,7 @@ public class RandomLocation {
     private static void cacheChunkAt(World world, int goal, int start, int xat, int zat) {
         Location location = new Location(world, xat * 16, 0, zat * 16);
         AsyncHandler.syncAtLocation(location, () -> {
-            CompletableFuture<Chunk> task = PaperLib.getChunkAtAsync(location);
+            CompletableFuture<Chunk> task = world.getChunkAtAsync(location);
             task.thenAccept(chunk -> AsyncHandler.syncAtLocation(location, () -> {
                 try {
                     ChunkSnapshot snapshot = chunk.getChunkSnapshot(true, true, false);

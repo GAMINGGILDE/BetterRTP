@@ -1,6 +1,6 @@
 package me.SuperRonanCraft.BetterRTP.player.rtp;
 
-import com.tcoded.folialib.wrapper.task.WrappedTask;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.references.customEvents.RTP_CancelledEvent;
 import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
@@ -14,7 +14,7 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 
 class RTPDelay implements Listener {
-    private WrappedTask task;
+    private ScheduledTask task;
     private final boolean cancelOnMove, cancelOnDamage;
     private final RTPPlayer rtp;
 

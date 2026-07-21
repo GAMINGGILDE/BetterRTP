@@ -10,9 +10,8 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.jetbrains.annotations.Nullable;
 
-import com.tcoded.folialib.wrapper.task.WrappedTask;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 
-import io.papermc.lib.PaperLib;
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.player.commands.RTP_SETUP_TYPE;
 import me.SuperRonanCraft.BetterRTP.player.rtp.RTP;
@@ -29,7 +28,7 @@ public class QueueGenerator {
     public static final int queueMax = 32, queueMin = 2; //Amount to ready up for each rtp world
     private final int queueMaxAttempts = 50;
     boolean generating;
-    private WrappedTask task;
+    private ScheduledTask task;
 
     public void unload() {
         if (task != null)
@@ -159,7 +158,7 @@ public class QueueGenerator {
         if (loc != null) {
             AsyncHandler.syncAtLocation(loc, () -> {
                 //BetterRTP.debug("Queued up a new position, attempts " + reQueueData.attempts);
-                PaperLib.getChunkAtAsync(loc)
+                loc.getWorld().getChunkAtAsync(loc)
                         .whenComplete((v, throwable) -> {
                             if (throwable != null) {
                                 BetterRTP.getInstance().getLogger().log(Level.WARNING,

@@ -1,10 +1,10 @@
-# BetterRTP
+# BetterRTP 4
 
 [![Build](https://github.com/GAMINGGILDE/BetterRTP/actions/workflows/run-tests.yaml/badge.svg)](https://github.com/GAMINGGILDE/BetterRTP/actions/workflows/run-tests.yaml)
 [![Issues](https://img.shields.io/github/issues/GAMINGGILDE/BetterRTP)](https://github.com/GAMINGGILDE/BetterRTP/issues)
 [![Lizenz](https://img.shields.io/github/license/GAMINGGILDE/BetterRTP)](LICENSE)
 
-BetterRTP ist ein umfangreich konfigurierbares Zufallsteleport-Plugin für Minecraft-Server. Dieses Repository ist der von GAMINGGILDE gepflegte Fork. Der Schwerpunkt liegt auf der Kompatibilität mit aktuellen Serverversionen, einschließlich regionssicherem Scheduling und Teleportieren unter Folia 26.1.x.
+BetterRTP ist ein umfangreich konfigurierbares Zufallsteleport-Plugin für moderne Paper- und Folia-Server. Dieses Repository ist der von GAMINGGILDE gepflegte Fork. Version 4 konzentriert sich ausschließlich auf aktuelle Serverplattformen und regionssicheres Scheduling.
 
 ## Funktionen
 
@@ -19,15 +19,15 @@ BetterRTP ist ein umfangreich konfigurierbares Zufallsteleport-Plugin für Minec
 
 ## Voraussetzungen
 
-Für den Betrieb wird ein kompatibler Spigot-, Paper- oder Folia-Server benötigt. Verwende die Java-Version, die von deiner jeweiligen Serversoftware vorausgesetzt wird. Folia 26.1.x wird mit Java 25 betrieben.
+Für den Betrieb werden Paper oder Folia ab Version 26.1 und Java 25 benötigt. Spigot und ältere Minecraft-Versionen werden ab BetterRTP 4 nicht mehr unterstützt.
 
 Zum Bauen von BetterRTP werden benötigt:
 
 - Git
-- JDK 17 oder neuer; JDK 25 wurde lokal erfolgreich getestet
+- JDK 25
 - Apache Maven 3.9 oder neuer, verfügbar über den Befehl `mvn`
 
-Das Projekt erzeugt weiterhin Java-8-Bytecode, um ältere Serverversionen möglichst lange zu unterstützen. Build- und Laufzeitumgebung sind daher getrennt zu betrachten: Für den Minecraft-Server muss immer die Java-Version verwendet werden, die dessen Distribution verlangt.
+Das Projekt wird mit Java 25 gebaut und erzeugt Java-25-Bytecode.
 
 ## Plugin bauen
 
@@ -42,7 +42,7 @@ mvn clean package
 Das fertige, einschließlich seiner benötigten Bibliotheken gepackte Server-Plugin wird hier erzeugt:
 
 ```text
-target/BetterRTP-3.7.jar
+target/BetterRTP-4.0.0-SNAPSHOT.jar
 ```
 
 `mvn test` prüft derzeit die Kompilierung und den Build. Das Projekt enthält aktuell noch keine automatisierten Unit- oder Integrationstests.
@@ -70,7 +70,7 @@ Der Build im Stammverzeichnis erzeugt ausschließlich das BetterRTP-Core-Plugin.
 ## Installation
 
 1. Stoppe den Minecraft-Server vollständig.
-2. Kopiere `target/BetterRTP-3.7.jar` in das Verzeichnis `plugins` des Servers.
+2. Kopiere `target/BetterRTP-4.0.0-SNAPSHOT.jar` in das Verzeichnis `plugins` des Servers.
 3. Entferne oder archiviere ältere BetterRTP-JARs, sodass nur eine Version geladen wird.
 4. Starte den Server und prüfe die erzeugte Konfiguration unter `plugins/BetterRTP`.
 5. Teste die Teleportation mit `/rtp`. Nach reinen Konfigurationsänderungen kann `/rtp reload` verwendet werden.

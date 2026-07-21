@@ -9,7 +9,6 @@ import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import io.papermc.lib.PaperLib;
 import lombok.Getter;
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.references.customEvents.RTP_FailedEvent;
@@ -70,7 +69,7 @@ public class RTPPlayer {
                 //Load chunk and find out if safe location (asynchronously)
                 AsyncHandler.syncAtLocation(loc, () -> {
                     try { //Prior to 1.12 this async chunk will NOT work
-                        CompletableFuture<Chunk> chunk = PaperLib.getChunkAtAsync(loc);
+                        CompletableFuture<Chunk> chunk = loc.getWorld().getChunkAtAsync(loc);
                         chunk.whenComplete((result, throwable) -> {
                             if (throwable != null) {
                                 getPl().getLogger().log(Level.WARNING,

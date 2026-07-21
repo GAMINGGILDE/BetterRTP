@@ -4,10 +4,10 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>me.SuperRonanCraft</groupId>
+    <groupId>de.gaminggilde</groupId>
     <artifactId>BetterRTP</artifactId>
     <packaging>jar</packaging>
-    <version>3.7</version>
+    <version>4.0.0-SNAPSHOT</version>
     <name>BetterRTP</name>
     <description>Random teleportation for Spigot, Paper and Folia Minecraft servers.</description>
     <url>https://github.com/GAMINGGILDE/BetterRTP</url>
@@ -25,7 +25,8 @@
     <!-- Upload patches to https://repo.ronanplugins.com/#/ -->
 
     <properties>
-        <maven.compiler.release>8</maven.compiler.release>
+        <maven.compiler.release>25</maven.compiler.release>
+        <paper.version>26.1.2.build.74-stable</paper.version>
         <lombok.version>1.18.46</lombok.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
@@ -64,7 +65,7 @@
                 <version>3.1.4</version>
             </plugin>
             <plugin>
-                <!-- Shade PaperLib into project -->
+                <!-- Shade runtime libraries into the plugin JAR -->
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.6.0</version>
@@ -72,14 +73,6 @@
                     <dependencyReducedPomLocation>${project.build.directory}/dependency-reduced-pom.xml
                     </dependencyReducedPomLocation>
                     <relocations>
-                        <relocation>
-                            <pattern>io.papermc.lib</pattern>
-                            <shadedPattern>me.SuperRonanCraft.BetterRTP.lib.paperlib</shadedPattern>
-                        </relocation>
-                        <relocation>
-                            <pattern>com.tcoded.folialib</pattern>
-                            <shadedPattern>me.SuperRonanCraft.BetterRTP.lib.folialib</shadedPattern>
-                        </relocation>
                     </relocations>
                 </configuration>
                 <executions>
@@ -96,8 +89,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.14.0</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <release>${maven.compiler.release}</release>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
@@ -121,11 +113,6 @@
         <repository>
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
-        </repository>
-        <!-- FoliaLib Repo -->
-        <repository>
-            <id>tcoded-releases</id>
-            <url>https://repo.tcoded.com/releases</url>
         </repository>
         <!-- Spigot Repo -->
         <repository>
@@ -185,18 +172,11 @@
         </repository>
     </repositories>
     <dependencies>
-        <!--Spigot API-->
+        <!-- Modern Paper/Folia API baseline -->
         <dependency>
-            <groupId>org.spigotmc</groupId>
-            <artifactId>spigot-api</artifactId>
-            <version>1.8.8-R0.1-SNAPSHOT</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- Spigot Stuff -->
-        <dependency>
-            <groupId>org.spigotmc</groupId>
-            <artifactId>spigot</artifactId>
-            <version>1.8.8-R0.1-SNAPSHOT</version>
+            <groupId>io.papermc.paper</groupId>
+            <artifactId>paper-api</artifactId>
+            <version>${paper.version}</version>
             <scope>provided</scope>
         </dependency>
         <!-- Vault -->
@@ -205,13 +185,6 @@
             <artifactId>VaultAPI</artifactId>
             <version>1.7</version>
             <scope>provided</scope>
-        </dependency>
-        <!-- Paper Library for Async Chunk/Teleport -->
-        <dependency>
-            <groupId>io.papermc</groupId>
-            <artifactId>paperlib</artifactId>
-            <version>1.0.8</version>
-            <scope>compile</scope>
         </dependency>
         <!-- WorldGuard (https://dev.bukkit.org/projects/worldguard) -->
         <dependency> <!-- Saber Factions screws up if updated -->
@@ -364,13 +337,6 @@
             <artifactId>plugin-api</artifactId>
             <version>3.4.5</version>
             <scope>provided</scope>
-        </dependency>
-        <!-- FoliaLib -->
-        <dependency>
-            <groupId>com.tcoded</groupId>
-            <artifactId>FoliaLib</artifactId>
-            <version>0.5.1</version>
-            <scope>compile</scope>
         </dependency>
         <!-- FactionsBridge -->
         <dependency>
