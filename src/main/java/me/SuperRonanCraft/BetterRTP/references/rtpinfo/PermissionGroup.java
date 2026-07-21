@@ -6,8 +6,8 @@ import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPermissionGro
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class PermissionGroup {
@@ -15,16 +15,19 @@ public class PermissionGroup {
     String groupName;
     @Getter private final HashMap<String, WorldPermissionGroup> worlds = new HashMap<>();
 
-    @SuppressWarnings("rawtypes")
     public PermissionGroup(Map.Entry<?, ?> fields) {
         this.groupName = fields.getKey().toString();
 
         BetterRTP.debug("- Permission Group: " + groupName);
         //Find Location and cache its values
-        Object value = fields.getValue();
-        for (Object worldList : ((ArrayList) value)) {
-            for (Object hash : ((HashMap) worldList).entrySet()) {
-                Map.Entry worldFields = (Map.Entry) hash;
+        if (!(fields.getValue() instanceof List<?> worldLists)) {
+            return;
+        }
+        for (Object worldList : worldLists) {
+            if (!(worldList instanceof Map<?, ?> worldsByName)) {
+                continue;
+            }
+            for (Map.Entry<?, ?> worldFields : worldsByName.entrySet()) {
                 BetterRTP.debug("- -- World: " + worldFields.getKey());
                 World world = Bukkit.getWorld(worldFields.getKey().toString());
                 if (world != null) {

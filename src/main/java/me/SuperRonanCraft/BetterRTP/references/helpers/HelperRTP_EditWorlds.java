@@ -12,6 +12,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -45,25 +46,27 @@ public class HelperRTP_EditWorlds {
         }
         YamlConfiguration config = file.getConfig();
 
-        List<Map<?, ?>> map = config.getMapList(path);
+        List<Map<String, Object>> map = mutableMapList(config.getMapList(path));
         boolean found = false;
-        for (Map<?, ?> m : map) {
-            if (m.keySet().toArray()[0].equals(field)) {
+        for (Map<String, Object> entry : map) {
+            if (entry.containsKey(field)) {
                 found = true;
-                for (Object map2 : m.values()) {
-                    Map<Object, Object> values = (Map<Object, Object>) map2;
-                    values.put(cmd.get(), value);
-                    Message_RTP.sms(sendi,
-                            MessagesCore.EDIT_SET.get(sendi, null)
-                                    .replace("%type%", cmd.get())
-                                    .replace("%value%", val));
-                }
+                Object existingValues = entry.get(field);
+                Map<String, Object> values = existingValues instanceof Map<?, ?> rawValues
+                        ? mutableStringMap(rawValues)
+                        : new LinkedHashMap<>();
+                values.put(cmd.get(), value);
+                entry.put(field, values);
+                Message_RTP.sms(sendi,
+                        MessagesCore.EDIT_SET.get(sendi, null)
+                                .replace("%type%", cmd.get())
+                                .replace("%value%", val));
                 break;
             }
         }
         if (!found) {
-            Map<Object, Object> map2 = new HashMap<>();
-            Map<Object, Object> values = new HashMap<>();
+            Map<String, Object> map2 = new HashMap<>();
+            Map<String, Object> values = new HashMap<>();
             values.put(cmd.get(), value);
             map2.put(field, values);
             map.add(map2);
@@ -99,28 +102,42 @@ public class HelperRTP_EditWorlds {
         FileOther.FILETYPE file = FileOther.FILETYPE.CONFIG;
         YamlConfiguration config = file.getConfig();
 
-        List<Map<?, ?>> map = config.getMapList(path);
-        for (Map<?, ?> m : map)
-            for (Map.Entry<?, ?> entry : m.entrySet()) {
-                String _group = entry.getKey().toString();
+        List<Map<String, Object>> map = mutableMapList(config.getMapList(path));
+        for (Map<String, Object> m : map)
+            for (Map.Entry<String, Object> entry : m.entrySet()) {
+                String _group = entry.getKey();
                 if (_group.equals(group)) {
                     BetterRTP.getInstance().getLogger().info("Group: " + group);
                     Object _value = entry.getValue();
-                    for (Object worldList : ((ArrayList) _value)) {
+                    if (!(_value instanceof List<?> worldLists)) {
+                        continue;
+                    }
+                    List<Object> mutableWorldLists = new ArrayList<>(worldLists);
+                    for (int i = 0; i < mutableWorldLists.size(); i++) {
+                        Object worldList = mutableWorldLists.get(i);
                         BetterRTP.getInstance().getLogger().info("World: " + worldList.toString());
-                        for (Object hash : ((HashMap) worldList).entrySet()) {
-                            Map.Entry worldFields = (Map.Entry) hash;
-                            BetterRTP.getInstance().getLogger().info("Hash: " + hash);
-                            if (world.equals(worldFields.getKey().toString())) {
-                                Map<Object, Object> values = (Map<Object, Object>) worldFields.getValue();
+                        if (!(worldList instanceof Map<?, ?> rawWorlds)) {
+                            continue;
+                        }
+                        Map<String, Object> worlds = mutableStringMap(rawWorlds);
+                        for (Map.Entry<String, Object> worldFields : worlds.entrySet()) {
+                            BetterRTP.getInstance().getLogger().info("Hash: " + worldFields);
+                            if (world.equals(worldFields.getKey())) {
+                                if (!(worldFields.getValue() instanceof Map<?, ?> rawValues)) {
+                                    continue;
+                                }
+                                Map<String, Object> values = mutableStringMap(rawValues);
                                 values.put(cmd.get(), value);
+                                worldFields.setValue(values);
                                 Message_RTP.sms(sendi,
                                         MessagesCore.EDIT_SET.get(sendi, null)
                                                 .replace("%type%", cmd.get())
                                                 .replace("%value%", val));
                             }
                         }
+                        mutableWorldLists.set(i, worlds);
                     }
+                    entry.setValue(mutableWorldLists);
                 }
             }
         /*if (!found) {
@@ -283,6 +300,18 @@ public class HelperRTP_EditWorlds {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static List<Map<String, Object>> mutableMapList(List<Map<?, ?>> source) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        source.stream().map(HelperRTP_EditWorlds::mutableStringMap).forEach(result::add);
+        return result;
+    }
+
+    private static Map<String, Object> mutableStringMap(Map<?, ?> source) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        source.forEach((key, value) -> result.put(String.valueOf(key), value));
+        return result;
     }
 
 }

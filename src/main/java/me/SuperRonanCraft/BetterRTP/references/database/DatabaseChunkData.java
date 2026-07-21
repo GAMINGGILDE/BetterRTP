@@ -1,6 +1,7 @@
 package me.SuperRonanCraft.BetterRTP.references.database;
 
 import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
+import me.SuperRonanCraft.BetterRTP.references.helpers.BiomeHelper;
 import org.bukkit.Chunk;
 import org.bukkit.block.Biome;
 
@@ -54,7 +55,7 @@ public class DatabaseChunkData extends SQLite {
                 add(chunk.getWorld().getName());
                 add(chunk.getX());
                 add(chunk.getZ());
-                add(biome.name());
+                add(BiomeHelper.name(biome));
                 add(maxy);
             }};
             sqlUpdate(sql, params);

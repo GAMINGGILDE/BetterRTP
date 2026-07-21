@@ -1,6 +1,7 @@
 package me.SuperRonanCraft.BetterRTP.references.rtpinfo;
 
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
+import me.SuperRonanCraft.BetterRTP.references.helpers.BiomeHelper;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.RTPWorld;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WORLD_TYPE;
 import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
@@ -88,7 +89,7 @@ public class RandomLocation {
         //Check Biomes
         if (biomes == null || biomes.isEmpty())
             return false;
-        String biomeCurrent = world.getBiome(x, z).name();
+        String biomeCurrent = BiomeHelper.name(world.getBiome(x, z));
         for (String biome : biomes)
             if (biomeCurrent.toUpperCase().contains(biome.toUpperCase()))
                 return false;

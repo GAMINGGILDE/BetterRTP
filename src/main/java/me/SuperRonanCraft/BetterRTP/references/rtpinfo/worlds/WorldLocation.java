@@ -95,11 +95,10 @@ public class WorldLocation implements RTPWorld, RTPWorld_Defaulted {
                     }
                     BetterRTP.debug("- - MinRad: " + minRad);
                 }
-                if (section.get("Biomes") != null) {
-                    if (section.get("Biomes").getClass() == ArrayList.class) {
-                        this.biomes = new ArrayList<String>((ArrayList) section.get("Biomes"));
-                        BetterRTP.debug("- - Biomes: " + this.biomes);
-                    }
+                if (section.get("Biomes") instanceof List<?> biomeValues) {
+                    this.biomes = new ArrayList<>();
+                    biomeValues.stream().map(String::valueOf).forEach(this.biomes::add);
+                    BetterRTP.debug("- - Biomes: " + this.biomes);
                 }
                 if (BetterRTP.getInstance().getFiles().getType(FileOther.FILETYPE.ECO).getBoolean("Economy.Enabled"))
                     if (section.get("Price") != null) {

@@ -87,11 +87,10 @@ public class WorldCustom implements RTPWorld, RTPWorld_Defaulted {
                             maxRad = BetterRTP.getInstance().getRTP().getRTPdefaultWorld().getMaxRadius();
                     }
                 }
-                if (test.get("Biomes") != null) {
-                    if (test.get("Biomes").getClass() == ArrayList.class) {
-                        this.biomes = new ArrayList<String>((ArrayList) test.get("Biomes"));
-                        BetterRTP.debug("- Biomes: " + this.biomes);
-                    }
+                if (test.get("Biomes") instanceof List<?> biomeValues) {
+                    this.biomes = new ArrayList<>();
+                    biomeValues.stream().map(String::valueOf).forEach(this.biomes::add);
+                    BetterRTP.debug("- Biomes: " + this.biomes);
                 }
                 if (BetterRTP.getInstance().getFiles().getType(FileOther.FILETYPE.ECO).getBoolean("Economy.Enabled"))
                     if (test.get("Price") != null) {
