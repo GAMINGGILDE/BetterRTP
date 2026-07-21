@@ -75,7 +75,22 @@ public interface FileData {
     }
 
     default List<Map<?, ?>> getMapList(String path) {
-        return getConfig().getMapList(path);
+        if (getConfig().isList(path)) {
+            return getConfig().getMapList(path);
+        }
+        ConfigurationSection section = getConfig().getConfigurationSection(path);
+        if (section == null) {
+            return List.of();
+        }
+        List<Map<?, ?>> entries = new ArrayList<>();
+        for (String key : section.getKeys(false)) {
+            Object value = section.get(key);
+            if (value instanceof ConfigurationSection child) {
+                value = child.getValues(false);
+            }
+            entries.add(Map.of(key, value));
+        }
+        return entries;
     }
 
     default void setValue(String path, Object value) {
@@ -86,29 +101,40 @@ public interface FileData {
     default void load() {
         YamlConfiguration config = getConfig();
         File file = getFile();
-        if (!getFile().exists()) {
+        boolean existingUserFile = file.exists();
+        if (!existingUserFile) {
             plugin().saveResource(fileName(), false);
-            try {
-                config.load(file);
-            } catch (Exception e) {
-                plugin().getLogger().info("File " + fileName() + " was unable to load!");
-                e.printStackTrace();
-            }
-        } else {
-            try {
-                config.load(file);
-                final InputStream in = plugin().getResource(fileName().replace(File.separator, "/"));
-                if (in != null && in.available() > 0) {
-                    config.setDefaults(YamlConfiguration.loadConfiguration(new InputStreamReader(in)));
-                    config.options().copyDefaults(true);
-                    in.close();
-                } else {
-                    System.out.println("Input file was nulled " + fileName());
+        }
+
+        try {
+            config.load(file);
+            YamlConfiguration defaults = new YamlConfiguration();
+            try (InputStream input = plugin().getResource(fileName().replace(File.separator, "/"))) {
+                if (input != null) {
+                    defaults = YamlConfiguration.loadConfiguration(
+                            new InputStreamReader(input, StandardCharsets.UTF_8));
                 }
-                config.save(file);
-            } catch (Exception e) {
-                e.printStackTrace();
             }
+
+            if (existingUserFile) {
+                ConfigurationMigrator.MigrationResult result =
+                        ConfigurationMigrator.migrate(fileName(), config);
+                if (result.migrated()) {
+                    java.nio.file.Path backup = AtomicConfigWriter.backup(file, result.sourceVersion());
+                    AtomicConfigWriter.write(file, config.saveToString());
+                    plugin().getLogger().info("Migrated " + fileName() + " from Config-Version "
+                            + result.sourceVersion() + " to " + result.targetVersion()
+                            + " (backup: " + backup.getFileName() + ")");
+                    result.changes().forEach(change -> plugin().getLogger().info(" - " + change));
+                }
+            }
+
+            config.setDefaults(defaults);
+            config.options().copyDefaults(false);
+        } catch (Exception exception) {
+            plugin().getLogger().log(java.util.logging.Level.SEVERE,
+                    "Unable to load or migrate " + fileName(), exception);
+            throw new IllegalStateException("Invalid BetterRTP configuration: " + fileName(), exception);
         }
     }
 
@@ -117,7 +143,7 @@ public interface FileData {
         java.util.logging.Logger logger = plugin().getLogger();
         AsyncHandler.async(() -> {
             try {
-                java.nio.file.Files.writeString(getFile().toPath(), contents, StandardCharsets.UTF_8);
+                AtomicConfigWriter.write(getFile(), contents);
             } catch (IOException exception) {
                 logger.log(
                         java.util.logging.Level.SEVERE, "Unable to save " + fileName(), exception);

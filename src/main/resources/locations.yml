@@ -1,4 +1,6 @@
 #Locations where rtp will center upon
+Config-Version: 4
+
 #Format:
 # - LOCATION_NAME:
 #     World: world
@@ -17,7 +19,7 @@ UseLocationsInSameWorld: true #Will only choose locations in same world rtp'ing 
 # If UseLocationsInSameWorld is set to true, use `betterrtp.bypass.location` to allow rtp'ing to locations in other worlds
 
 Locations:
-  - main_loc:
+  main_loc:
       World: world_name
       CenterX: 100
       CenterZ: 150

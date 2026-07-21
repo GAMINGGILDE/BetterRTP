@@ -7,7 +7,9 @@ import java.io.File;
 import java.io.IOException;
 import java.sql.*;
 import java.util.Iterator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 
 public abstract class SQLite {
@@ -15,8 +17,6 @@ public abstract class SQLite {
     private static final String db_file_name = "database";
     List<String> tables;
     private volatile boolean loaded;
-
-    public String addMissingColumns = "ALTER TABLE %table% ADD COLUMN %column% %type%";
 
     private final DATABASE_TYPE type;
 
@@ -32,7 +32,7 @@ public abstract class SQLite {
     }
 
     private Connection getLocal() {
-        File dataFolder = new File(BetterRTP.getInstance().getDataFolder().getPath() + File.separator + "data", db_file_name + ".db");
+        File dataFolder = databaseFile();
         if (!dataFolder.exists()){
             try {
                 dataFolder.getParentFile().mkdir();
@@ -65,26 +65,31 @@ public abstract class SQLite {
 
         SQLiteExecutor.executor().submit(() -> {
             Connection connection = getSQLConnection();
+            if (connection == null) {
+                BetterRTP.getInstance().getLogger().severe("Unable to open the BetterRTP database");
+                return;
+            }
             try {
-                Statement s = connection.createStatement();
-                for (String table : tables) {
-                    s.executeUpdate(getCreateTable(table));
-                    //s.executeUpdate(createTable_bank);
-                    for (Enum<?> c : getColumns(type)) { //Add missing columns dynamically
-                        try {
-                            String _name = getColumnName(type, c);
-                            String _type = getColumnType(type, c);
-                            //System.out.println("Adding " + _name);
-                            s.executeUpdate(addMissingColumns.replace("%table%", table).replace("%column%", _name).replace("%type%", _type));
-                        } catch (SQLException e) {
-                            //e.printStackTrace();
+                DatabaseSchemaMigrator.migrate(
+                        connection, databaseFile().toPath(), BetterRTP.getInstance().getLogger());
+                try (Statement statement = connection.createStatement()) {
+                    for (String table : tables) {
+                        statement.executeUpdate(getCreateTable(table));
+                        Set<String> existingColumns = getExistingColumns(connection, table);
+                        for (Enum<?> column : getColumns(type)) {
+                            String columnName = getColumnName(type, column);
+                            if (!existingColumns.contains(columnName.toLowerCase())) {
+                                statement.executeUpdate("ALTER TABLE `" + table + "` ADD COLUMN `"
+                                        + columnName + "` " + getColumnType(type, column));
+                            }
                         }
+                        BetterRTP.debug("Database " + type.name() + ":" + table + " configured and loaded!");
                     }
-                    BetterRTP.debug("Database " + type.name() + ":" + table + " configured and loaded!");
                 }
-                s.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
+                loaded = true;
+            } catch (SQLException | IOException exception) {
+                BetterRTP.getInstance().getLogger().log(
+                        Level.SEVERE, "Unable to migrate or initialize database " + type, exception);
             } finally {
                 if (connection != null) {
                     try {
@@ -94,9 +99,23 @@ public abstract class SQLite {
                     }
                 }
             }
-            initialize();
-            loaded = true;
         });
+    }
+
+    private File databaseFile() {
+        return new File(BetterRTP.getInstance().getDataFolder().getPath()
+                + File.separator + "data", db_file_name + ".db");
+    }
+
+    private Set<String> getExistingColumns(Connection connection, String table) throws SQLException {
+        Set<String> columns = new HashSet<>();
+        try (Statement statement = connection.createStatement();
+             ResultSet result = statement.executeQuery("PRAGMA table_info(`" + table + "`)")) {
+            while (result.next()) {
+                columns.add(result.getString("name").toLowerCase());
+            }
+        }
+        return columns;
     }
 
     private String getCreateTable(String table) {

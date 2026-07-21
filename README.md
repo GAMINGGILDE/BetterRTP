@@ -81,6 +81,24 @@ Bei Plugin-Updates – insbesondere bei Änderungen am Scheduler oder an der Fol
 
 Die Standardkonfiguration ist in [`src/main/resources/config.yml`](src/main/resources/config.yml) dokumentiert. Die Sprachdateien befinden sich unter [`src/main/resources/lang`](src/main/resources/lang).
 
+Alle strukturellen Konfigurationsdateien besitzen ab BetterRTP 4 den Eintrag `Config-Version: 4`. Beim ersten Start mit vorhandenen Dateien aus Version 3.7 werden diese automatisch migriert. Vor jeder Änderung legt BetterRTP eine Sicherung wie `config.yml.v3.bak` an. Bereits vorhandene Einstellungen bleiben erhalten; neue Standardwerte werden nur zur Laufzeit ergänzt und nicht stillschweigend in die Benutzerdateien geschrieben.
+
+Weltbezogene Einstellungen verwenden in Version 4 normale YAML-Mappings statt Listen mit jeweils einem Eintrag:
+
+```yaml
+CustomWorlds:
+  survival:
+    MaxRadius: 5000
+    MinRadius: 100
+
+Overrides:
+  lobby: survival
+```
+
+Dasselbe vereinfachte Format gilt für `WorldType`, `PermissionGroup.Groups`, `Locations` und `CustomWorlds.Prices`. Veraltete Materialnamen aus 3.7 werden bei der Migration in aktuelle Paper-Materialnamen übersetzt. Ungültige Radien, Höhen, Formen, Welttypen, Preise und Materialien werden beim Start mit dem genauen Dateinamen und Konfigurationspfad gemeldet.
+
+Die SQLite-Datenbank unter `plugins/BetterRTP/data/database.db` besitzt ebenfalls eine Schema-Version. Vor der ersten Schema-Migration wird eine Sicherung wie `database.db.schema-v0.bak` erstellt. Konfigurations- und Datenbank-Sicherungen sollten erst gelöscht werden, nachdem die migrierte Installation erfolgreich getestet wurde.
+
 Neue und aktualisierte Übersetzungen sollten dieselben Schlüssel wie `en.yml` verwenden. Bestehende Schlüssel dürfen nur umbenannt oder entfernt werden, wenn gleichzeitig ihre Verwendung im Java-Code angepasst wird.
 
 ## Mitwirken

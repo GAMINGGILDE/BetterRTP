@@ -12,6 +12,7 @@ import me.SuperRonanCraft.BetterRTP.references.database.DatabaseHandler;
 import me.SuperRonanCraft.BetterRTP.references.depends.DepEconomy;
 import me.SuperRonanCraft.BetterRTP.references.depends.DepPlaceholderAPI;
 import me.SuperRonanCraft.BetterRTP.references.file.Files;
+import me.SuperRonanCraft.BetterRTP.references.file.ConfigurationValidator;
 import me.SuperRonanCraft.BetterRTP.references.invs.RTPInventories;
 import me.SuperRonanCraft.BetterRTP.references.messages.Message_RTP;
 import me.SuperRonanCraft.BetterRTP.references.messages.MessagesCore;
@@ -103,6 +104,7 @@ public class BetterRTP extends JavaPlugin {
     private void loadAll() {
         playerDataManager.clear();
         AsyncHandler.asyncFuture(files::loadAll).join();
+        ConfigurationValidator.validateAll(this);
         settings.load();
         cooldowns.load();
         databaseHandler.load();

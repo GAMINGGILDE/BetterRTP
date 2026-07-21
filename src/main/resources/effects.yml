@@ -1,3 +1,5 @@
+Config-Version: 4
+
 Sounds:
   Enabled: true
   ## Modern Minecraft sound keys. Legacy Bukkit names from BetterRTP 3.x remain supported.

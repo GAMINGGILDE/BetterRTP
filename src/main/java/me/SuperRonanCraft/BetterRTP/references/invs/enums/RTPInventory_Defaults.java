@@ -15,6 +15,7 @@ import me.SuperRonanCraft.BetterRTP.references.invs.RTP_INV_SETTINGS;
 import me.SuperRonanCraft.BetterRTP.references.messages.Message;
 import me.SuperRonanCraft.BetterRTP.references.player.HelperPlayer;
 import me.SuperRonanCraft.BetterRTP.references.player.playerdata.PlayerData;
+import me.SuperRonanCraft.BetterRTP.BetterRTP;
 
 public interface RTPInventory_Defaults {
 
@@ -23,7 +24,12 @@ public interface RTPInventory_Defaults {
     void clickEvent(InventoryClickEvent event);
 
     default ItemStack createItem(String item, int amount, String name, List<String> lore) {
-        Material mat = Material.valueOf(item.toUpperCase());
+        Material mat = Material.matchMaterial(item);
+        if (mat == null) {
+            BetterRTP.getInstance().getLogger().severe(
+                    "[Configuration] Unknown inventory material '" + item + "'; using BARRIER");
+            mat = Material.BARRIER;
+        }
         ItemStack _stack = new ItemStack(mat, amount);
         ItemMeta _meta = _stack.getItemMeta();
         if (_meta != null) {

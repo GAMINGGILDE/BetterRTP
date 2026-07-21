@@ -1,6 +1,8 @@
 # BetterRTP plugin by SuperRonanCraft! (Join my Public Server at ronanplugins.com) #
 # Need help? go to https://ronanplugins.com/discord! #
 
+Config-Version: 4
+
 Language-File: 'en.yml'
 
 Settings:
@@ -62,21 +64,24 @@ Default:
 
 ## Blocks BetterRTP will NOT teleport onto. More Blocks at: https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/Material.html #
 BlacklistedBlocks:
-  - stationary_water
-  - stationary_lava
-  - water
-  - flowing_water
-  - lava
-  - flowing_lava
-  - cactus
-  - leaves
-  - leaves_2
-  - air
-  - void_air
-  - bedrock
-  - oak_leaves
-  - jungle_leaves
-  - kelp
+  - WATER
+  - LAVA
+  - CACTUS
+  - AIR
+  - CAVE_AIR
+  - VOID_AIR
+  - BEDROCK
+  - OAK_LEAVES
+  - SPRUCE_LEAVES
+  - BIRCH_LEAVES
+  - JUNGLE_LEAVES
+  - ACACIA_LEAVES
+  - DARK_OAK_LEAVES
+  - MANGROVE_LEAVES
+  - CHERRY_LEAVES
+  - AZALEA_LEAVES
+  - FLOWERING_AZALEA_LEAVES
+  - KELP
 
 ## Worlds to NOT allow /rtp in, unless there is an override to another enabled world #
 DisabledWorlds:
@@ -86,7 +91,7 @@ DisabledWorlds:
 ## Worlds you want to have a custom min/max and spawn center in #
 ## [MaxRadius] and [MinRadius] MUST be positive! These cannot be equal to each other!
 CustomWorlds:
-  - custom_world_1:
+  custom_world_1:
       UseWorldBorder: false
       ## If UseWorldBorder is true, everything will be ignored EXCEPT "MinRadius"!
       MaxRadius: 1000
@@ -98,7 +103,7 @@ CustomWorlds:
       MaxY: 320
       MinY: 0
       Cooldown: 60
-  - other_custom_world:
+  other_custom_world:
       MaxRadius: 10000
       MinRadius: 150
       CenterX: 123
@@ -114,25 +119,25 @@ CustomWorlds:
 ## Override a world and rtp a player executing the command in one world, to another
 Overrides:
   #FORMAT - <CURRENT WORLD>:<DESIRED WORLD>
-  - master_world: 'world'
-  - creative_world: 'world'
+  master_world: 'world'
+  creative_world: 'world'
 
 WorldType: # Available types are NORMAL, NETHER
-  - world: NORMAL
-  - world_nether: NETHER
-  - world_the_end: NORMAL
+  world: NORMAL
+  world_nether: NETHER
+  world_the_end: NORMAL
 
 PermissionGroup: #Player requires "betterrtp.group.<group_name>" to trigger these configs
   Enabled: false
   Groups:
-    - vip: # permission: betterrtp.group.vip
-        - Build_World: #World named "Build_World"
+    vip: # permission: betterrtp.group.vip
+        Build_World: #World named "Build_World"
             Priority: 0 #Lower the more prioritized
             MaxRadius: 10000
             MinRadius: 1000
             Price: 100
             Cooldown: 500 #optional
-        - Survival_World:
+        Survival_World:
             Priority: 10 #Higher the less prioritized
             UseWorldBorder: false
             MaxRadius: 5000
@@ -142,8 +147,8 @@ PermissionGroup: #Player requires "betterrtp.group.<group_name>" to trigger thes
             Price: 10
             MaxY: 320
             MinY: 0
-    - vip2: # permission: betterrtp.group.vip2
-        - Build_World:
+    vip2: # permission: betterrtp.group.vip2
+        Build_World:
             MaxRadius: 25000
             MinRadius: 10000
             Price: 15

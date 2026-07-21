@@ -1,3 +1,5 @@
+Config-Version: 4
+
 Economy:
   ## Enable world charges? ALL Worlds included, even custom worlds!
   Enabled: false
@@ -14,6 +16,6 @@ CustomWorlds:
   Enabled: true
   Prices:
     ## PlayerWorld will be charged "5" when typing /rtp, if they do not have "betterrtp.eco.bypass"
-  - world: 50
+    world: 50
     ## Setting the price to "0" will make the "Success.Bypass" message show
-  - world_end: 0
+    world_end: 0
