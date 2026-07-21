@@ -7,7 +7,6 @@ import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueData;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueGenerator;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueHandler;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.RTPWorld;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 
@@ -67,22 +66,24 @@ public class DatabaseQueue extends SQLite {
                 try {
                     conn = getSQLConnection();
                     ps = conn.prepareStatement("SELECT * FROM " + tables.get(0) + " WHERE "
-                            + COLUMNS.WORLD.name + " = '" + range.getWorld().getName() + "' AND "
-                            + COLUMNS.X.name + " BETWEEN " + range.getXLow() + " AND " + range.getXHigh()
-                            + " AND " + COLUMNS.Z.name + " BETWEEN " + range.getZLow() + " AND " + range.getZHigh()
-                            + " ORDER BY RANDOM() LIMIT " + (QueueGenerator.queueMax + 1)
-                    );
+                            + COLUMNS.WORLD.name + " = ? AND "
+                            + COLUMNS.X.name + " BETWEEN ? AND ? AND "
+                            + COLUMNS.Z.name + " BETWEEN ? AND ? "
+                            + "ORDER BY RANDOM() LIMIT ?");
+                    ps.setString(1, range.getWorld().getName());
+                    ps.setInt(2, range.getXLow());
+                    ps.setInt(3, range.getXHigh());
+                    ps.setInt(4, range.getZLow());
+                    ps.setInt(5, range.getZHigh());
+                    ps.setInt(6, QueueGenerator.QUEUE_MAX + 1);
                     rs = ps.executeQuery();
                     while (rs.next()) {
                         long x = rs.getLong(COLUMNS.X.name);
                         long z = rs.getLong(COLUMNS.Z.name);
-                        String worldName = rs.getString(COLUMNS.WORLD.name);
                         int id = rs.getInt(COLUMNS.ID.name);
                         long generated = rs.getLong(COLUMNS.GENERATED.name);
-                        World world = Bukkit.getWorld(worldName);
-                        if (world != null) {
-                            queueDataList.add(new QueueData(new Location(world, x, 69, z), generated, id));
-                        }
+                        queueDataList.add(new QueueData(
+                                new Location(range.getWorld(), x, 69, z), generated, id));
                     }
                 } catch (SQLException ex) {
                     BetterRTP.getInstance().getLogger().log(Level.SEVERE, Errors.sqlConnectionExecute(), ex);
@@ -96,6 +97,31 @@ public class DatabaseQueue extends SQLite {
         return queueDataList;
     }
 
+    /** Atomically reserves a queue row. Only one concurrent caller can succeed. */
+    public boolean claim(int databaseId) {
+        try {
+            return SQLiteExecutor.EXECUTOR.submit(() -> {
+                String sql = "DELETE FROM " + tables.get(0) + " WHERE " + COLUMNS.ID.name + " = ?";
+                try (Connection connection = getSQLConnection()) {
+                    if (connection == null) {
+                        return false;
+                    }
+                    try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                        statement.setInt(1, databaseId);
+                        return statement.executeUpdate() == 1;
+                    }
+                } catch (SQLException exception) {
+                    BetterRTP.getInstance().getLogger().log(
+                            Level.SEVERE, Errors.sqlConnectionExecute(), exception);
+                    return false;
+                }
+            }).get();
+        } catch (Exception exception) {
+            BetterRTP.getInstance().getLogger().log(Level.SEVERE, "Unable to reserve an RTP queue entry", exception);
+            return false;
+        }
+    }
+
     //Set a queue to save
     public QueueData addQueue(Location loc) {
         try {
@@ -105,14 +131,10 @@ public class DatabaseQueue extends SQLite {
                         + COLUMNS.Z.name + ", "
                         + COLUMNS.WORLD.name + ", "
                         + COLUMNS.GENERATED.name + ") VALUES(?, ?, ?, ?)";
-                List<Object> params = new ArrayList<Object>() {{
-                    add(loc.getBlockX());
-                    add(loc.getBlockZ());
-                    add(loc.getWorld().getName());
-                    add(System.currentTimeMillis());
-                }};
-                int database_id = createQueue(sql, params);
-                return database_id >= 0 ? new QueueData(loc, System.currentTimeMillis(), database_id) : null;
+                List<Object> params = List.of(
+                        loc.getBlockX(), loc.getBlockZ(), loc.getWorld().getName(), System.currentTimeMillis());
+                int databaseId = createQueue(sql, params);
+                return databaseId >= 0 ? new QueueData(loc, System.currentTimeMillis(), databaseId) : null;
             }).get();
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -153,11 +175,7 @@ public class DatabaseQueue extends SQLite {
                         + COLUMNS.X.name + " = ? AND "
                         + COLUMNS.Z.name + " = ? AND "
                         + COLUMNS.WORLD.name + " = ?";
-                List<Object> params = new ArrayList<Object>() {{
-                    add(loc.getBlockX());
-                    add(loc.getBlockZ());
-                    add(loc.getWorld().getName());
-                }};
+                List<Object> params = List.of(loc.getBlockX(), loc.getBlockZ(), loc.getWorld().getName());
                 return sqlUpdate(sql, params);
             }).get();
         } catch (Exception ex) {

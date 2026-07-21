@@ -1,6 +1,7 @@
 package me.SuperRonanCraft.BetterRTP.references.rtpinfo;
 
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
+import me.SuperRonanCraft.BetterRTP.player.rtp.RTP_SHAPE;
 import me.SuperRonanCraft.BetterRTP.references.customEvents.RTP_TeleportPostEvent;
 import me.SuperRonanCraft.BetterRTP.references.database.DatabaseHandler;
 import me.SuperRonanCraft.BetterRTP.references.database.DatabaseQueue;
@@ -14,11 +15,9 @@ import org.bukkit.plugin.PluginManager;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Random;
 
 public class QueueHandler implements Listener { //Randomly queues up some safe locations
 
-    boolean loaded = false;
     private final QueueGenerator generator = new QueueGenerator();
 
     public static boolean isEnabled() {
@@ -35,7 +34,6 @@ public class QueueHandler implements Listener { //Randomly queues up some safe l
     }
 
     public void load() {
-        loaded = false;
         generator.load();
     }
 
@@ -47,12 +45,13 @@ public class QueueHandler implements Listener { //Randomly queues up some safe l
 
     public static QueueData getRandomAsync(RTPWorld rtpWorld) {
         List<QueueData> queueData = getApplicableAsync(rtpWorld);
-        if (queueData.size() <= QueueGenerator.queueMin && !BetterRTP.getInstance().getQueue().generator.generating)
+        if (queueData.size() <= QueueGenerator.QUEUE_MIN) {
             BetterRTP.getInstance().getQueue().generator.generate(rtpWorld);
-        if (!queueData.isEmpty()) {
-            QueueData randomQueue = queueData.get(new Random().nextInt(queueData.size()));
-            queueData.clear();
-            return randomQueue;
+        }
+        for (QueueData candidate : queueData) {
+            if (DatabaseHandler.getQueue().claim(candidate.getDatabaseId())) {
+                return candidate;
+            }
         }
         return null;
     }
@@ -94,24 +93,16 @@ public class QueueHandler implements Listener { //Randomly queues up some safe l
     }
 
     public static boolean isInCircle(Location loc, RTPWorld rtpWorld) {
-        int center_x = rtpWorld.getCenterX();
-        int center_z = rtpWorld.getCenterZ();
-        int radius = rtpWorld.getMaxRadius();
-        int radius_min = rtpWorld.getMinRadius();
-        int x = loc.getBlockX();
-        int z = loc.getBlockZ();
-        int square_dist = (center_x - x) * 2 + (center_z - z) * 2;
-        return square_dist <= radius * 2 && square_dist >= radius_min * 2;
+        return area(rtpWorld, RTP_SHAPE.CIRCLE).contains(loc.getBlockX(), loc.getBlockZ());
     }
 
     public static boolean isInSquare(Location loc, RTPWorld rtpWorld) {
-        int radius_max = rtpWorld.getMaxRadius();
-        int radius_min = rtpWorld.getMinRadius();
-        int x = loc.getBlockX() - rtpWorld.getCenterX();
-        int z = loc.getBlockZ() - rtpWorld.getCenterZ();
-        return ((Math.abs(x)>=radius_min || Math.abs(z)>=radius_min) && (Math.abs(x) <= radius_max && Math.abs(z) <= radius_max));
-        // Returns true if the x or z coordinate is above the MinRadius and if they are both under the MaxRadius. Returns false otherwise.
-        // (All locations provided should be below the MaxRadius anyway, but I put it in just in-case.)
+        return area(rtpWorld, RTP_SHAPE.SQUARE).contains(loc.getBlockX(), loc.getBlockZ());
+    }
+
+    private static RtpArea area(RTPWorld world, RTP_SHAPE shape) {
+        return new RtpArea(world.getCenterX(), world.getCenterZ(),
+                world.getMinRadius(), world.getMaxRadius(), shape);
     }
 }
 

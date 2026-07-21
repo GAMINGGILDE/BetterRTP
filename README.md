@@ -45,7 +45,7 @@ Das fertige, einschließlich seiner benötigten Bibliotheken gepackte Server-Plu
 target/BetterRTP-4.0.0-SNAPSHOT.jar
 ```
 
-`mvn test` prüft derzeit die Kompilierung und den Build. Das Projekt enthält aktuell noch keine automatisierten Unit- oder Integrationstests.
+`mvn test` kompiliert das Projekt und führt die automatisierten Unit-Tests aus. Diese prüfen unter anderem die Kreis- und Quadratberechnung sowie die Erzeugung gültiger RTP-Koordinaten.
 
 ## Veröffentlichungen
 

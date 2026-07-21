@@ -9,64 +9,22 @@ import org.bukkit.block.Biome;
 import org.bukkit.block.Block;
 
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class RandomLocation {
 
     public static Location generateLocation(RTPWorld rtpWorld) {
-        Location loc;
-        switch (rtpWorld.getShape()) {
-            case CIRCLE: loc = generateRound(rtpWorld); break;
-            case SQUARE:
-            default: loc = generateSquare(rtpWorld); break;
-        }
-        return loc;
-    }
-
-    private static Location generateSquare(RTPWorld rtpWorld) {
-        // Return a Location where a random X and Z are within the bounds defined by MinRadius and MaxRadius
-        int radius_min = rtpWorld.getMinRadius();
-        int radius_max = rtpWorld.getMaxRadius();
         try {
-            if (radius_min < 0 || radius_max < 0 || radius_min >= radius_max) {
-                throw new IllegalArgumentException(); // If MinRadius or MaxRadius is negative, throw an exception
-            }
+            RtpArea area = new RtpArea(rtpWorld.getCenterX(), rtpWorld.getCenterZ(),
+                    rtpWorld.getMinRadius(), rtpWorld.getMaxRadius(), rtpWorld.getShape());
+            RtpArea.Point point = area.randomPoint(ThreadLocalRandom.current());
+            return new Location(rtpWorld.getWorld(), point.x(), 69, point.z());
         } catch (IllegalArgumentException e) {
-            e.printStackTrace();
             BetterRTP.getInstance().getLogger().warning("Incorrect configuration! Check your config and confirm that MinRadius is smaller than MaxRadius and that they are both positive numbers!");
             BetterRTP.getInstance().getLogger().warning("Max: " + rtpWorld.getMaxRadius() + " Min: " + rtpWorld.getMinRadius());
             return null;
         }
-        // Generate a random X and Z based off the radius. No quadrants voodoo.
-        Random random = new Random();
-        int x = random.nextInt(radius_max * 2) - radius_max;
-        int z = (Math.abs(x) >= radius_min)
-            ? random.nextInt(radius_max * 2) - radius_max
-            : (random.nextBoolean() ? 1 : -1) * (radius_min + random.nextInt(radius_max - radius_min));
-        x += rtpWorld.getCenterX();
-        z += rtpWorld.getCenterZ();
-        return new Location(rtpWorld.getWorld(), x, 69, z);
-    }
-
-    private static Location generateRound(RTPWorld rtpWorld) {
-        // Return a random X and Z based off location on a spiral curve
-        int min = rtpWorld.getMinRadius();
-        int max = rtpWorld.getMaxRadius() - min;
-        int x, z;
-
-        double area = Math.PI * (max - min) * (max + min); //of all the area in this donut
-        double subArea = area * new Random().nextDouble(); //pick a random subset of that area
-
-        double r = Math.sqrt(subArea/Math.PI + min * min); //convert area to radius
-        double theta = (r - (int) r) * 2 * Math.PI; //use the remainder as an angle
-
-        // polar to cartesian
-        x = (int) (r * Math.cos(theta));
-        z = (int) (r * Math.sin(theta));
-        x += rtpWorld.getCenterX();
-        z += rtpWorld.getCenterZ();
-        return new Location(rtpWorld.getWorld(), x, 69, z);
     }
 
     public static Location getSafeLocation(WORLD_TYPE type, World world, Location loc, int minY, int maxY, List<String> biomes) {

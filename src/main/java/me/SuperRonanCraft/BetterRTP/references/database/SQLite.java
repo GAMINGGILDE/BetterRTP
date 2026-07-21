@@ -15,7 +15,7 @@ public abstract class SQLite {
 
     private static final String db_file_name = "database";
     List<String> tables;
-    private boolean loaded;
+    private volatile boolean loaded;
 
     public String addMissingColumns = "ALTER TABLE %table% ADD COLUMN %column% %type%";
 
@@ -223,9 +223,9 @@ public abstract class SQLite {
 
     protected void close(PreparedStatement ps, ResultSet rs, Connection conn) {
         try {
+            if (rs != null) rs.close();
             if (ps != null) ps.close();
             if (conn != null) conn.close();
-            if (rs != null) rs.close();
         } catch (SQLException ex) {
             Error.close(BetterRTP.getInstance(), ex);
         }
