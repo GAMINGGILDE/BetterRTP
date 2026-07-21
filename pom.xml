@@ -7,12 +7,26 @@
     <groupId>me.SuperRonanCraft</groupId>
     <artifactId>BetterRTP</artifactId>
     <packaging>jar</packaging>
-    <version>3.6.13</version>
+    <version>3.7</version>
+    <name>BetterRTP</name>
+    <description>Random teleportation for Spigot, Paper and Folia Minecraft servers.</description>
+    <url>https://github.com/GAMINGGILDE/BetterRTP</url>
+
+    <developers>
+        <developer>
+            <name>SuperRonanCraft</name>
+        </developer>
+        <developer>
+            <name>Christian F</name>
+            <url>https://github.com/CFPlusPlus</url>
+        </developer>
+    </developers>
 
     <!-- Upload patches to https://repo.ronanplugins.com/#/ -->
 
     <properties>
         <maven.compiler.release>8</maven.compiler.release>
+        <lombok.version>1.18.46</lombok.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -84,6 +98,13 @@
                 <configuration>
                     <source>1.8</source>
                     <target>1.8</target>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
         </plugins>
@@ -287,7 +308,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.38</version>
+            <version>${lombok.version}</version>
             <scope>provided</scope>
         </dependency>
         <!-- EssentialsX -->
