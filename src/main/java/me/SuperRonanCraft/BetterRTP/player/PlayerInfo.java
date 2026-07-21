@@ -45,23 +45,6 @@ public class PlayerInfo {
         return invs.containsKey(p);
     }
 
-    private void unloadAll() {
-        invs.clear();
-        //invType.clear();
-        invWorld.clear();
-        invNextInv.clear();
-        //cooldown.clear();
-        activeTeleports.clear();
-        //previousLocations.clear();
-    }
-
-    private void unload(Player p) {
-        clearInvs(p);
-        //cooldown.remove(p);
-        endTeleport(p);
-        //previousLocations.remove(p);
-    }
-
     public void clearInvs(Player p) {
         invs.remove(p);
         //invType.remove(p);

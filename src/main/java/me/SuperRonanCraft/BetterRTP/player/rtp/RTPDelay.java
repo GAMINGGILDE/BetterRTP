@@ -39,8 +39,7 @@ class RTPDelay implements Listener {
     }
 
     @EventHandler
-    @SuppressWarnings("unused")
-    private void event(PlayerMoveEvent e) {
+    void event(PlayerMoveEvent e) {
         if (cancelOnMove)
             if (e.getPlayer().equals(rtp.getPlayer()) &&
                 (e.getTo() != null &&
@@ -53,8 +52,7 @@ class RTPDelay implements Listener {
     }
 
     @EventHandler
-    @SuppressWarnings("unused")
-    private void event(EntityDamageEvent e) {
+    void event(EntityDamageEvent e) {
         if (cancelOnDamage)
             if (e.getEntity() instanceof Player){
                 if (e.getEntity().equals(rtp.getPlayer()))

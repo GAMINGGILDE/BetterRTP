@@ -40,9 +40,6 @@ public class RTPInvCoordinates extends RTPInventory {
     @Override
     public void clickEvent(InventoryClickEvent e) {
         int slot = e.getSlot();
-        for (RTP_COORDINATES_SETTINGS set : RTP_COORDINATES_SETTINGS.values()) {
-            
-        }
         for (RTP_INV_ITEMS type : RTP_INV_ITEMS.values()) {
             if (type.slot != -1) {
                 switch (type) {

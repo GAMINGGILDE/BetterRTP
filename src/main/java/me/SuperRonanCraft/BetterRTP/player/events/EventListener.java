@@ -49,11 +49,6 @@ public class EventListener implements Listener {
     }
 
     @EventHandler
-    private void teleport(PlayerTeleportEvent e) {
-        Teleport.tpEvent(e);
-    }
-
-    @EventHandler
     private void worldLoad(WorldLoadEvent e) {
         worldLoad.load(e);
     }
