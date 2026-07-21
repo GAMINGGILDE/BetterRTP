@@ -41,31 +41,41 @@ public class RTPTeleport {
                 if (throwable != null) {
                     getPl().getLogger().log(Level.WARNING,
                             "Unable to teleport " + p.getName() + " asynchronously", throwable);
-                    AsyncHandler.syncAtEntity(p, session::finish);
+                    finishFailedTeleport(p, session);
                     return;
                 }
                 if (!Boolean.TRUE.equals(success)) {
                     getPl().getLogger().warning("Asynchronous teleport failed for " + p.getName());
-                    AsyncHandler.syncAtEntity(p, session::finish);
+                    finishFailedTeleport(p, session);
                     return;
                 }
-                AsyncHandler.syncAtEntity(p, () -> {
-                    try {
-                        afterTeleport(p, loc, wPlayer, attempts, oldLoc, type);
-                        notifyRequester(sendi, p, loc, wPlayer, attempts);
-                        if (type == RTP_TYPE.JOIN
-                                && BetterRTP.getInstance().getSettings().isRtpOnFirstJoin_SetAsRespawn()) {
-                            p.setRespawnLocation(loc, true);
-                        }
-                    } finally {
-                        session.finish();
-                    }
-                });
+                AsyncHandler.syncAtEntity(
+                        p,
+                        () -> {
+                            try {
+                                afterTeleport(p, loc, wPlayer, attempts, oldLoc, type);
+                                notifyRequester(sendi, p, loc, wPlayer, attempts);
+                                if (type == RTP_TYPE.JOIN
+                                        && BetterRTP.getInstance().getSettings().isRtpOnFirstJoin_SetAsRespawn()) {
+                                    p.setRespawnLocation(loc, true);
+                                }
+                            } finally {
+                                session.completeSuccessfully();
+                            }
+                        },
+                        () -> AsyncHandler.sync(session::finish));
             });
         } catch (Exception e) {
             session.finish();
             getPl().getLogger().log(Level.WARNING, "Unable to start teleport for " + p.getName(), e);
         }
+    }
+
+    private void finishFailedTeleport(Player player, RTPPlayer session) {
+        AsyncHandler.syncAtEntity(
+                player,
+                session::finish,
+                () -> AsyncHandler.sync(session::finish));
     }
 
     private void notifyRequester(CommandSender sender, Player teleportedPlayer, Location location,

@@ -105,28 +105,6 @@ public class CooldownHandler {
         return lockedAfter > 0 && getData(player).getRtpCount() >= lockedAfter;
     }
 
-    public void removeCooldown(Player player, World world) {
-        if (!enabled) return;
-        PlayerData playerData = getData(player);
-        CooldownData cooldownData = playerData.getCooldowns().getOrDefault(world, null);
-        if (cooldownData != null) {
-            if (lockedAfter > 0) {
-                if (playerData.getRtpCount() <= 0) { //Remove from file as well
-                    savePlayer(player, world, cooldownData, true);
-                    getData(player).getCooldowns().put(world, null);
-                } else { //Keep the player cached
-                    savePlayer(player, world, cooldownData, false);
-                }
-            } else { //Remove completely
-                getData(player).getCooldowns().remove(world);
-                savePlayer(player, world, cooldownData, true);
-            }
-        } else if (!cooldownByWorld) {
-            getData(player).setGlobalCooldown(0);
-            savePlayer(player, null, null, true);
-        }
-    }
-
     private void savePlayer(Player player, @Nullable World world, @Nullable CooldownData data, boolean remove) {
         AsyncHandler.async(() -> {
                 if (world != null && data != null && getDatabaseWorlds() != null) { //Per World enabled?

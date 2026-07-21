@@ -4,6 +4,7 @@ import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 
 import java.util.concurrent.CompletableFuture;
@@ -21,6 +22,18 @@ public class AsyncHandler {
 
     public static void syncAtEntity(Entity entity, Runnable runnable) {
         entity.getScheduler().run(getPlugin(), task -> runnable.run(), null);
+    }
+
+    public static void syncAtEntity(Entity entity, Runnable runnable, Runnable retired) {
+        entity.getScheduler().run(getPlugin(), task -> runnable.run(), retired);
+    }
+
+    public static void syncAtSender(CommandSender sender, Runnable runnable) {
+        if (sender instanceof Entity entity) {
+            syncAtEntity(entity, runnable);
+        } else {
+            sync(runnable);
+        }
     }
 
     public static void syncAtLocation(Location location, Runnable runnable) {

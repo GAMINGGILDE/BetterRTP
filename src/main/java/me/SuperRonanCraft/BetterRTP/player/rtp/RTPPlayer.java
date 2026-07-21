@@ -4,7 +4,9 @@ import lombok.Getter;
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.references.customEvents.RTP_FailedEvent;
 import me.SuperRonanCraft.BetterRTP.references.customEvents.RTP_FindLocationEvent;
+import me.SuperRonanCraft.BetterRTP.references.depends.DepEconomy;
 import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP_Check;
+import me.SuperRonanCraft.BetterRTP.references.messages.MessagesCore;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueData;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueHandler;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.RandomLocation;
@@ -32,6 +34,7 @@ public class RTPPlayer {
     @Getter private final RTP_TYPE type;
     private final AtomicInteger attempts = new AtomicInteger();
     private final AtomicBoolean finished = new AtomicBoolean();
+    private volatile RTPTransaction transaction;
 
     RTPPlayer(Player player, RTP settings, WorldPlayer worldPlayer, RTP_TYPE type) {
         this.player = player;
@@ -148,20 +151,40 @@ public class RTPPlayer {
             return;
         }
 
-        if (!getPl().getEco().charge(player, worldPlayer)) {
-            if (worldPlayer.getPlayerInfo().isApplyCooldown()) {
-                getPl().getCooldowns().removeCooldown(player, worldPlayer.getWorld());
-            }
+        DepEconomy.Reservation reservation = getPl().getEco().reserve(worldPlayer);
+        if (!reservation.successful()) {
+            notifyReservationFailure(sender, reservation.failure());
             finish();
             return;
         }
 
-        if (worldPlayer.getPlayerInfo().isApplyCooldown() && HelperRTP_Check.applyCooldown(player)) {
-            getPl().getCooldowns().add(player, worldPlayer.getWorld());
-        }
+        boolean applyCooldown = worldPlayer.getPlayerInfo().isApplyCooldown()
+                && HelperRTP_Check.applyCooldown(player);
+        transaction = new RTPTransaction(
+                () -> {
+                    try {
+                        reservation.commitHunger();
+                    } finally {
+                        if (applyCooldown) {
+                            getPl().getCooldowns().add(player, worldPlayer.getWorld());
+                        }
+                    }
+                },
+                reservation::rollback);
+
         location.setYaw(player.getLocation().getYaw());
         location.setPitch(player.getLocation().getPitch());
         settings.teleport.sendPlayer(sender, this, location);
+    }
+
+    private void notifyReservationFailure(CommandSender sender, DepEconomy.Failure failure) {
+        MessagesCore message = failure == DepEconomy.Failure.HUNGER
+                ? MessagesCore.FAILED_HUNGER
+                : MessagesCore.FAILED_PRICE;
+        message.send(player, worldPlayer);
+        if (sender != player) {
+            AsyncHandler.syncAtSender(sender, () -> message.send(sender, worldPlayer));
+        }
     }
 
     private void retry(CommandSender sender) {
@@ -176,7 +199,6 @@ public class RTPPlayer {
         }
         try {
             settings.teleport.failedTeleport(player, sender);
-            getPl().getCooldowns().removeCooldown(player, worldPlayer.getWorld());
             Bukkit.getPluginManager().callEvent(new RTP_FailedEvent(this));
         } finally {
             getPl().getPInfo().endTeleport(player);
@@ -184,15 +206,32 @@ public class RTPPlayer {
     }
 
     void cancel() {
-        if (finished.compareAndSet(false, true)) {
-            getPl().getCooldowns().removeCooldown(player, worldPlayer.getWorld());
-            getPl().getPInfo().endTeleport(player);
-        }
+        finish();
     }
 
     void finish() {
         if (finished.compareAndSet(false, true)) {
-            getPl().getPInfo().endTeleport(player);
+            try {
+                RTPTransaction currentTransaction = transaction;
+                if (currentTransaction != null) {
+                    currentTransaction.rollback();
+                }
+            } finally {
+                getPl().getPInfo().endTeleport(player);
+            }
+        }
+    }
+
+    void completeSuccessfully() {
+        if (finished.compareAndSet(false, true)) {
+            try {
+                RTPTransaction currentTransaction = transaction;
+                if (currentTransaction != null) {
+                    currentTransaction.commit();
+                }
+            } finally {
+                getPl().getPInfo().endTeleport(player);
+            }
         }
     }
 
