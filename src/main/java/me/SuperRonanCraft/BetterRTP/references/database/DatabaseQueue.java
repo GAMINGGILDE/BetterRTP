@@ -4,8 +4,10 @@ import lombok.Getter;
 import lombok.NonNull;
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueData;
-import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueGenerator;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueHandler;
+import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueLimits;
+import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueRange;
+import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueRepository;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.RTPWorld;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -19,11 +21,20 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
+import java.util.function.BooleanSupplier;
 
-public class DatabaseQueue extends SQLite {
+public class DatabaseQueue extends SQLite implements QueueRepository {
 
+    private final BooleanSupplier queueEnabled;
+
+    @Deprecated(forRemoval = false)
     public DatabaseQueue() {
+        this(QueueHandler::isEnabled);
+    }
+
+    public DatabaseQueue(BooleanSupplier queueEnabled) {
         super(DATABASE_TYPE.QUEUE);
+        this.queueEnabled = queueEnabled;
     }
 
     @Override
@@ -52,11 +63,22 @@ public class DatabaseQueue extends SQLite {
     }
 
     @Override public void load() {
-        if (QueueHandler.isEnabled())
+        if (queueEnabled.getAsBoolean())
             super.load();
     }
 
+    @Override
+    public List<QueueData> findInRange(QueueRange range) {
+        return queryInRange(range);
+    }
+
+    /** @deprecated Use {@link #findInRange(QueueRange)}. */
+    @Deprecated(forRemoval = false)
     public List<QueueData> getInRange(QueueRangeData range) {
+        return queryInRange(range.toRange());
+    }
+
+    private List<QueueData> queryInRange(QueueRange range) {
         final List<QueueData> queueDataList = new ArrayList<>();
         try {
             SQLiteExecutor.executor().submit(() -> {
@@ -70,12 +92,12 @@ public class DatabaseQueue extends SQLite {
                             + COLUMNS.X.name + " BETWEEN ? AND ? AND "
                             + COLUMNS.Z.name + " BETWEEN ? AND ? "
                             + "ORDER BY RANDOM() LIMIT ?");
-                    ps.setString(1, range.getWorldName());
-                    ps.setInt(2, range.getXLow());
-                    ps.setInt(3, range.getXHigh());
-                    ps.setInt(4, range.getZLow());
-                    ps.setInt(5, range.getZHigh());
-                    ps.setInt(6, QueueGenerator.QUEUE_MAX + 1);
+                    ps.setString(1, range.worldName());
+                    ps.setInt(2, range.xLow());
+                    ps.setInt(3, range.xHigh());
+                    ps.setInt(4, range.zLow());
+                    ps.setInt(5, range.zHigh());
+                    ps.setInt(6, QueueLimits.DATABASE_FETCH_LIMIT);
                     rs = ps.executeQuery();
                     while (rs.next()) {
                         long x = rs.getLong(COLUMNS.X.name);
@@ -83,7 +105,7 @@ public class DatabaseQueue extends SQLite {
                         int id = rs.getInt(COLUMNS.ID.name);
                         long generated = rs.getLong(COLUMNS.GENERATED.name);
                         queueDataList.add(new QueueData(
-                                new Location(range.getWorld(), x, 69, z), generated, id));
+                                new Location(range.world(), x, 69, z), generated, id));
                     }
                 } catch (SQLException ex) {
                     BetterRTP.getInstance().getLogger().log(Level.SEVERE, Errors.sqlConnectionExecute(), ex);
@@ -123,6 +145,15 @@ public class DatabaseQueue extends SQLite {
     }
 
     //Set a queue to save
+    @Override
+    public QueueData save(Location location) {
+        return addQueue(
+                location,
+                location.getWorld().getName(),
+                location.getBlockX(),
+                location.getBlockZ());
+    }
+
     public QueueData addQueue(Location loc, String worldName, int blockX, int blockZ) {
         try {
             return SQLiteExecutor.executor().submit(() -> {
@@ -184,6 +215,14 @@ public class DatabaseQueue extends SQLite {
         }
     }
 
+    @Override
+    public boolean remove(Location location) {
+        return removeLocation(
+                location.getWorld().getName(),
+                location.getBlockX(),
+                location.getBlockZ());
+    }
+
     @Getter
     public static class QueueRangeData {
 
@@ -193,12 +232,20 @@ public class DatabaseQueue extends SQLite {
         String worldName;
 
         public QueueRangeData(RTPWorld rtpWorld) {
-            this.xLow = rtpWorld.getCenterX() - rtpWorld.getMaxRadius();
-            this.xHigh = rtpWorld.getCenterX() + rtpWorld.getMaxRadius();
-            this.zLow = rtpWorld.getCenterZ() - rtpWorld.getMaxRadius();
-            this.zHigh = rtpWorld.getCenterZ() + rtpWorld.getMaxRadius();
-            this.world = rtpWorld.getWorld();
-            this.worldName = world.getName();
+            this(QueueRange.from(rtpWorld));
+        }
+
+        public QueueRangeData(QueueRange range) {
+            this.xLow = range.xLow();
+            this.xHigh = range.xHigh();
+            this.zLow = range.zLow();
+            this.zHigh = range.zHigh();
+            this.world = range.world();
+            this.worldName = range.worldName();
+        }
+
+        public QueueRange toRange() {
+            return new QueueRange(xLow, xHigh, zLow, zHigh, world, worldName);
         }
     }
 }

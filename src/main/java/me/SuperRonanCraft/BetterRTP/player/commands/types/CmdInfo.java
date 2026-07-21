@@ -28,7 +28,6 @@ import me.SuperRonanCraft.BetterRTP.references.messages.Message;
 import me.SuperRonanCraft.BetterRTP.references.messages.Message_RTP;
 import me.SuperRonanCraft.BetterRTP.references.messages.MessagesCore;
 import me.SuperRonanCraft.BetterRTP.references.messages.MessagesHelp;
-import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueHandler;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldDefault;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPlayer;
 import me.SuperRonanCraft.BetterRTP.references.web.LogUploader;
@@ -212,7 +211,8 @@ public class CmdInfo implements RTPCommand, RTPCommandHelpable {
             info.add("&7- &6Biomes&7: &f" + _rtpworld.getBiomes().toString());
             info.add("&7- &eShape&7: &f" + _rtpworld.getShape().toString() + getInfo(_rtpworld, worldDefault, "shape"));
             info.add("&7- &6Permission Group&7: " + (_rtpworld.getConfig() != null ? "&a" + _rtpworld.getConfig().getGroupName() : "&cN/A"));
-            info.add("&7- &eQueue enabled&7: " + (QueueHandler.isEnabled() ? _true : _false));
+            info.add("&7- &eQueue enabled&7: "
+                    + (BetterRTP.getInstance().getQueue().enabled() ? _true : _false));
         }
         return info;
     }

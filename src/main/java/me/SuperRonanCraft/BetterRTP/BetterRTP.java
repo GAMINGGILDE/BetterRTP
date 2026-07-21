@@ -13,6 +13,7 @@ import me.SuperRonanCraft.BetterRTP.references.depends.DepEconomy;
 import me.SuperRonanCraft.BetterRTP.references.depends.DepPlaceholderAPI;
 import me.SuperRonanCraft.BetterRTP.references.file.Files;
 import me.SuperRonanCraft.BetterRTP.references.file.ConfigurationValidator;
+import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP;
 import me.SuperRonanCraft.BetterRTP.references.invs.RTPInventories;
 import me.SuperRonanCraft.BetterRTP.references.messages.Message_RTP;
 import me.SuperRonanCraft.BetterRTP.references.messages.MessagesCore;
@@ -33,16 +34,24 @@ public class BetterRTP extends JavaPlugin {
     @Getter private final DepEconomy eco = new DepEconomy();
     @Getter private final Settings settings = new Settings();
     @Getter private final CooldownHandler cooldowns = new CooldownHandler();
+    @Getter private final DatabaseHandler databaseHandler = new DatabaseHandler(settings::isQueueEnabled);
     @Getter private final Commands cmd = new Commands(this);
-    @Getter private final RTP RTP = new RTP(eco, settings, cooldowns, this::getLogger, this);
+    @Getter private final RTP RTP = new RTP(
+            eco, settings, cooldowns, this::getLogger, this, this::getQueue);
     private final EventListener listener = new EventListener();
     @Getter private static BetterRTP instance;
     @Getter private final Files files = new Files();
     @Getter private final RTPInventories invs = new RTPInventories();
     @Getter private final PlayerInfo pInfo = new PlayerInfo();
     @Getter private final PlayerDataManager playerDataManager = new PlayerDataManager();
-    @Getter private final QueueHandler queue = new QueueHandler();
-    @Getter private final DatabaseHandler databaseHandler = new DatabaseHandler();
+    @Getter private final QueueHandler queue = new QueueHandler(
+            settings::isQueueEnabled,
+            databaseHandler.getDatabaseQueue(),
+            this::getRTP,
+            settings::getChunkLoadTimeoutSeconds,
+            this::getLogger,
+            HelperRTP::getWorldType,
+            BetterRTP::debug);
     @Getter private final WarningHandler warningHandler = new WarningHandler();
     @Getter private boolean PlaceholderAPI;
     @Getter private final RTPLogger rtpLogger = new RTPLogger();

@@ -1,5 +1,6 @@
 package me.SuperRonanCraft.BetterRTP.player.commands.types;
 
+import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.player.commands.RTPCommand;
 import me.SuperRonanCraft.BetterRTP.player.rtp.RTPSetupInformation;
 import me.SuperRonanCraft.BetterRTP.references.PermissionNode;
@@ -7,8 +8,7 @@ import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP;
 import me.SuperRonanCraft.BetterRTP.references.messages.Message;
 import me.SuperRonanCraft.BetterRTP.references.messages.Message_RTP;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueData;
-import me.SuperRonanCraft.BetterRTP.references.database.DatabaseQueue;
-import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueHandler;
+import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueRange;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPlayer;
 import me.SuperRonanCraft.BetterRTP.references.web.LogUploader;
 import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
@@ -55,7 +55,7 @@ public class CmdQueue implements RTPCommand {
                     WorldPlayer worldPlayer = HelperRTP.getPlayerWorld(new RTPSetupInformation(
                             HelperRTP.getActualWorld(player, world), player, player, true));
                     return new QueueWorldQuery(
-                            world.getName(), worldPlayer, QueueHandler.snapshot(worldPlayer));
+                            world.getName(), worldPlayer, QueueRange.from(worldPlayer));
                 })
                 .toList();
         AsyncHandler.async(() -> {
@@ -110,7 +110,8 @@ public class CmdQueue implements RTPCommand {
     private static List<String> queueGetWorld(QueueWorldQuery query) {
         List<String> info = new ArrayList<>();
         info.add("&eWorld: &6" + query.worldName());
-        for (QueueData queue : QueueHandler.getApplicableAsync(query.worldPlayer(), query.range())) {
+        for (QueueData queue : BetterRTP.getInstance().getQueue()
+                .applicable(query.worldPlayer(), query.range())) {
             String str = "&8- &7x= &b%x, &7z= &b%z";
             Location loc = queue.getLocation();
             str = str.replace("%x", String.valueOf(loc.getBlockX())).replace("%z", String.valueOf(loc.getBlockZ()));
@@ -120,7 +121,7 @@ public class CmdQueue implements RTPCommand {
     }
 
     private record QueueWorldQuery(
-            String worldName, WorldPlayer worldPlayer, DatabaseQueue.QueueRangeData range) {
+            String worldName, WorldPlayer worldPlayer, QueueRange range) {
     }
 
     public List<String> tabComplete(CommandSender sendi, String[] args) {

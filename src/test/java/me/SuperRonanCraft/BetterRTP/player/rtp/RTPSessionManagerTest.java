@@ -79,7 +79,13 @@ class RTPSessionManagerTest {
                 RTP_TYPE.COMMAND,
                 RtpWorldSnapshotTest.snapshot(List.of()),
                 new RtpPlayerOptions(true, true, true, true, true));
-        return new RTPPlayer(rtp, request, null, new RtpCandidateFinder());
+        RtpCandidateFinder candidateFinder = new RtpCandidateFinder(
+                (world, range) -> null,
+                world -> null,
+                (candidate, world, blocked) -> null,
+                location -> true,
+                location -> { });
+        return new RTPPlayer(rtp, request, null, candidateFinder);
     }
 
     private static Object primitiveDefault(Class<?> type) {

@@ -16,6 +16,7 @@ import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP_Check;
 import me.SuperRonanCraft.BetterRTP.references.depends.DepEconomy;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.PermissionGroup;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.CooldownHandler;
+import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueHandler;
 import me.SuperRonanCraft.BetterRTP.references.settings.Settings;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.RTPWorld;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WORLD_TYPE;
@@ -32,6 +33,7 @@ public class RTP {
     private final CooldownHandler cooldowns;
     private final Supplier<Logger> logger;
     private final Plugin eventOwner;
+    private final Supplier<QueueHandler> queue;
     @Getter private final RTPTeleport teleport;
     @Getter private final RTPSessionManager sessions = new RTPSessionManager();
     //Cache
@@ -48,7 +50,7 @@ public class RTP {
 
     /** Compatibility constructor for lifecycle-only use outside the running plugin. */
     public RTP() {
-        this(null, null, null, () -> Logger.getLogger(RTP.class.getName()), null);
+        this(null, null, null, () -> Logger.getLogger(RTP.class.getName()), null, () -> null);
     }
 
     public RTP(
@@ -56,12 +58,14 @@ public class RTP {
             Settings pluginSettings,
             CooldownHandler cooldowns,
             Supplier<Logger> logger,
-            Plugin eventOwner) {
+            Plugin eventOwner,
+            Supplier<QueueHandler> queue) {
         this.economy = economy;
         this.pluginSettings = pluginSettings;
         this.cooldowns = cooldowns;
         this.logger = logger;
         this.eventOwner = eventOwner;
+        this.queue = queue;
         this.teleport = new RTPTeleport(this);
     }
 
@@ -148,4 +152,6 @@ public class RTP {
     Logger logger() { return logger.get(); }
 
     Plugin eventOwner() { return eventOwner; }
+
+    QueueHandler queue() { return queue.get(); }
 }

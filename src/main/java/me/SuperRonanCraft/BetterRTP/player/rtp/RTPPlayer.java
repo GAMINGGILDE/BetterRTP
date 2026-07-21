@@ -5,10 +5,9 @@ import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import me.SuperRonanCraft.BetterRTP.references.customEvents.RTP_FailedEvent;
 import me.SuperRonanCraft.BetterRTP.references.customEvents.RTP_FindLocationEvent;
 import me.SuperRonanCraft.BetterRTP.references.depends.DepEconomy;
-import me.SuperRonanCraft.BetterRTP.references.database.DatabaseQueue;
 import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP_Check;
 import me.SuperRonanCraft.BetterRTP.references.messages.MessagesCore;
-import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueHandler;
+import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueRange;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPlayer;
 import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
 import org.bukkit.Bukkit;
@@ -40,12 +39,13 @@ public class RTPPlayer {
     private volatile RTPTransaction transaction;
     private final Set<CompletableFuture<?>> pendingFutures = ConcurrentHashMap.newKeySet();
     private final Set<ScheduledTask> pendingTasks = ConcurrentHashMap.newKeySet();
-    private final DatabaseQueue.QueueRangeData queueRange;
+    private final QueueRange queueRange;
     private final List<String> blockedBlocks;
     private final RtpCandidateFinder candidateFinder;
 
     RTPPlayer(RTP settings, WorldPlayer worldPlayer) {
-        this(settings, RtpRequest.from(worldPlayer), worldPlayer, new RtpCandidateFinder());
+        this(settings, RtpRequest.from(worldPlayer), worldPlayer,
+                new RtpCandidateFinder(settings.queue()));
     }
 
     RTPPlayer(
@@ -54,7 +54,7 @@ public class RTPPlayer {
         this.settings = settings;
         this.worldPlayer = worldPlayer;
         this.request = request;
-        this.queueRange = QueueHandler.snapshot(request.world());
+        this.queueRange = QueueRange.from(request.world());
         this.blockedBlocks = settings.getBlockList() == null
                 ? List.of() : List.copyOf(settings.getBlockList());
         this.candidateFinder = candidateFinder;

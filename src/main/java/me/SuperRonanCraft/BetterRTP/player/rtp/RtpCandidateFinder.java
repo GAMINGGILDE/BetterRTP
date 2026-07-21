@@ -1,8 +1,8 @@
 package me.SuperRonanCraft.BetterRTP.player.rtp;
 
-import me.SuperRonanCraft.BetterRTP.references.database.DatabaseQueue;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueData;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueHandler;
+import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueRange;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.RandomLocation;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.RTPWorld;
 import org.bukkit.Location;
@@ -19,13 +19,13 @@ final class RtpCandidateFinder {
     private final RegionValidator regionValidator;
     private final CandidateDiscarder discarder;
 
-    RtpCandidateFinder() {
+    RtpCandidateFinder(QueueHandler queue) {
         this(
-                QueueHandler::getRandomAsync,
+                queue::claimRandom,
                 RandomLocation::generateLocation,
                 RandomLocation::getSafeLocation,
                 RTPPluginValidation::checkLocation,
-                QueueHandler::remove);
+                queue::removeQueued);
     }
 
     RtpCandidateFinder(
@@ -44,7 +44,7 @@ final class RtpCandidateFinder {
     Location select(
             Location suppliedLocation,
             RtpWorldSnapshot world,
-            DatabaseQueue.QueueRangeData queueRange) {
+            QueueRange queueRange) {
         if (suppliedLocation != null) {
             return suppliedLocation;
         }
@@ -63,7 +63,7 @@ final class RtpCandidateFinder {
 
     @FunctionalInterface
     interface QueueSource {
-        QueueData find(RTPWorld world, DatabaseQueue.QueueRangeData range);
+        QueueData find(RTPWorld world, QueueRange range);
     }
 
     @FunctionalInterface
