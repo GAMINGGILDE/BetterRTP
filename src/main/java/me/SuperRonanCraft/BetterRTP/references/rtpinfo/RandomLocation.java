@@ -1,6 +1,7 @@
 package me.SuperRonanCraft.BetterRTP.references.rtpinfo;
 
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
+import me.SuperRonanCraft.BetterRTP.player.rtp.RtpWorldSnapshot;
 import me.SuperRonanCraft.BetterRTP.references.helpers.BiomeHelper;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.RTPWorld;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WORLD_TYPE;
@@ -29,16 +30,35 @@ public class RandomLocation {
     }
 
     public static Location getSafeLocation(WORLD_TYPE type, World world, Location loc, int minY, int maxY, List<String> biomes) {
+        return getSafeLocation(type, world, loc, minY, maxY, biomes,
+                BetterRTP.getInstance().getRTP().getBlockList());
+    }
+
+    public static Location getSafeLocation(
+            Location candidate, RtpWorldSnapshot settings, List<String> blockedBlocks) {
+        return getSafeLocation(
+                settings.worldType(), settings.world(), candidate,
+                settings.minY(), settings.maxY(), settings.biomes(), blockedBlocks);
+    }
+
+    private static Location getSafeLocation(
+            WORLD_TYPE type, World world, Location loc, int minY, int maxY,
+            List<String> biomes, List<String> blockedBlocks) {
         switch (type) { //Get a Y position and check for bad blocks
-            case NETHER: return getLocAtNether(loc.getBlockX(), loc.getBlockZ(), minY, maxY, world, biomes);
+            case NETHER: return getLocAtNether(loc.getBlockX(), loc.getBlockZ(), minY, maxY,
+                    world, biomes, blockedBlocks);
             case NORMAL:
-            default: return getLocAtNormal(loc.getBlockX(), loc.getBlockZ(), minY, maxY, world, biomes);
+            default: return getLocAtNormal(loc.getBlockX(), loc.getBlockZ(), minY, maxY,
+                    world, biomes, blockedBlocks);
         }
     }
-    private static Location getLocAtNormal(int x, int z, int minY, int maxY, World world, List<String> biomes) {
+
+    private static Location getLocAtNormal(
+            int x, int z, int minY, int maxY, World world,
+            List<String> biomes, List<String> blockedBlocks) {
         Block b = getHighestBlock(x, z, world);
         if (!b.getType().isSolid()) { //Water, lava, shrubs...
-            if (!badBlock(b.getType().name(), x, b.getY(), z, world, null)) { //Make sure it's not an invalid block (ex: water, lava...)
+            if (!badBlock(b.getType().name(), x, b.getY(), z, world, null, blockedBlocks)) { //Make sure it's not an invalid block (ex: water, lava...)
                 //int y = world.getHighestBlockYAt(x, z);
                 b = world.getBlockAt(x, b.getY() - 1, z);
             }
@@ -46,7 +66,7 @@ public class RandomLocation {
         //Between max and min y
         if (    b.getY() >= minY
                 && b.getY() <= maxY
-                && !badBlock(b.getType().name(), x, b.getY(), z, world, biomes)) {
+                && !badBlock(b.getType().name(), x, b.getY(), z, world, biomes, blockedBlocks)) {
             return new Location(world, x, b.getY() + 1, z);
         }
         return null;
@@ -59,7 +79,9 @@ public class RandomLocation {
         return b;
     }
 
-    private static Location getLocAtNether(int x, int z, int minY, int maxY, World world, List<String> biomes) {
+    private static Location getLocAtNether(
+            int x, int z, int minY, int maxY, World world,
+            List<String> biomes, List<String> blockedBlocks) {
         //Max and Min Y
         for (int y = minY + 1; y < maxY/*world.getMaxHeight()*/; y++) {
             Block block_current = world.getBlockAt(x, y, z);
@@ -69,11 +91,13 @@ public class RandomLocation {
                     block_current.getType().isSolid(), feetAir, headAir)) {
                 continue;
             }
-            if (!feetAir && badBlock(block_current.getType().name(), x, y, z, world, null)) {
+            if (!feetAir && badBlock(
+                    block_current.getType().name(), x, y, z, world, null, blockedBlocks)) {
                 continue;
             }
             String block = world.getBlockAt(x, y - 1, z).getType().name();
-            if (!block.endsWith("AIR") && !badBlock(block, x, y, z, world, biomes)) {
+            if (!block.endsWith("AIR")
+                    && !badBlock(block, x, y, z, world, biomes, blockedBlocks)) {
                 return new Location(world, x, y, z);
             }
         }
@@ -82,10 +106,17 @@ public class RandomLocation {
 
     // Bad blocks, or bad biome
     public static boolean badBlock(String block, int x, int y, int z, World world, List<String> biomes) {
+        return badBlock(block, x, y, z, world, biomes,
+                BetterRTP.getInstance().getRTP().getBlockList());
+    }
+
+    private static boolean badBlock(
+            String block, int x, int y, int z, World world,
+            List<String> biomes, List<String> blockedBlocks) {
         String biome = biomes == null || biomes.isEmpty()
                 ? null : BiomeHelper.name(world.getBiome(x, y, z));
         return !LocationSafetyPolicy.isAllowedSurface(
-                block, biome, BetterRTP.getInstance().getRTP().getBlockList(), biomes);
+                block, biome, blockedBlocks, biomes);
     }
 
     public static void runChunkTest() {

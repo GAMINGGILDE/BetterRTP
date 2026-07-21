@@ -6,6 +6,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import org.bukkit.Location;
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -22,7 +23,20 @@ import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
 
 public class RTPTeleport {
 
+    private final RTP runtime;
     private final RTPEffects effects = new RTPEffects();
+
+    /**
+     * @deprecated Obtain this component through {@link RTP#getTeleport()}.
+     */
+    @Deprecated(forRemoval = false)
+    public RTPTeleport() {
+        this(BetterRTP.getInstance().getRTP());
+    }
+
+    RTPTeleport(RTP runtime) {
+        this.runtime = runtime;
+    }
 
     void load() {
         effects.load();
@@ -37,19 +51,19 @@ public class RTPTeleport {
         loadingTeleport(p, sendi); //Send loading message to player who requested
         try {
             RTP_TeleportEvent event = new RTP_TeleportEvent(p, location, wPlayer.getWorldtype());
-            getPl().getServer().getPluginManager().callEvent(event);
+            Bukkit.getPluginManager().callEvent(event);
             Location loc = event.getLocation();
             CompletableFuture<Boolean> teleport = session.track(AsyncHandler.teleportAsync(p, loc)
-                    .orTimeout(getPl().getSettings().getTeleportTimeoutSeconds(), TimeUnit.SECONDS));
+                    .orTimeout(runtime.pluginSettings().getTeleportTimeoutSeconds(), TimeUnit.SECONDS));
             teleport.whenComplete((success, throwable) -> {
                 if (throwable != null) {
-                    getPl().getLogger().log(Level.WARNING,
+                    runtime.logger().log(Level.WARNING,
                             "Unable to teleport " + p.getName() + " asynchronously", throwable);
                     finishFailedTeleport(p, session);
                     return;
                 }
                 if (!Boolean.TRUE.equals(success)) {
-                    getPl().getLogger().warning("Asynchronous teleport failed for " + p.getName());
+                    runtime.logger().warning("Asynchronous teleport failed for " + p.getName());
                     finishFailedTeleport(p, session);
                     return;
                 }
@@ -60,7 +74,7 @@ public class RTPTeleport {
                                 afterTeleport(p, loc, wPlayer, attempts, oldLoc, type);
                                 notifyRequester(sendi, p, loc, wPlayer, attempts);
                                 if (type == RTP_TYPE.JOIN
-                                        && BetterRTP.getInstance().getSettings().isRtpOnFirstJoin_SetAsRespawn()) {
+                                        && runtime.pluginSettings().isRtpOnFirstJoin_SetAsRespawn()) {
                                     p.setRespawnLocation(loc, true);
                                 }
                             } finally {
@@ -71,7 +85,7 @@ public class RTPTeleport {
             });
         } catch (Exception e) {
             session.finish();
-            getPl().getLogger().log(Level.WARNING, "Unable to start teleport for " + p.getName(), e);
+            runtime.logger().log(Level.WARNING, "Unable to start teleport for " + p.getName(), e);
         }
     }
 
@@ -106,12 +120,12 @@ public class RTPTeleport {
         effects.getTitles().showTitle(RTPEffect_Titles.RTP_TITLE_TYPE.TELEPORT, p, loc, attempts, 0);
         if (effects.getTitles().sendMsg(RTPEffect_Titles.RTP_TITLE_TYPE.TELEPORT))
             sendSuccessMsg(p, p.getName(), loc, wPlayer, true, attempts);
-        getPl().getServer().getPluginManager().callEvent(new RTP_TeleportPostEvent(p, loc, oldLoc, wPlayer, type));
+        Bukkit.getPluginManager().callEvent(new RTP_TeleportPostEvent(p, loc, oldLoc, wPlayer, type));
     }
 
     public boolean beforeTeleportInstant(CommandSender sendi, Player p) {
         RTP_TeleportPreEvent event = new RTP_TeleportPreEvent(p);
-        getPl().getServer().getPluginManager().callEvent(event);
+        Bukkit.getPluginManager().callEvent(event);
         if (!event.isCancelled()) {
             effects.getSounds().playDelay(p);
             effects.getTitles().showTitle(RTPEffect_Titles.RTP_TITLE_TYPE.NODELAY, p, p.getLocation(), 0, 0);
@@ -123,7 +137,7 @@ public class RTPTeleport {
 
     public boolean beforeTeleportDelay(Player p, int delay) { //Only Delays should call this
         RTP_TeleportPreEvent event = new RTP_TeleportPreEvent(p);
-        getPl().getServer().getPluginManager().callEvent(event);
+        Bukkit.getPluginManager().callEvent(event);
         if (!event.isCancelled()) {
             effects.getSounds().playDelay(p);
             effects.getTitles().showTitle(RTPEffect_Titles.RTP_TITLE_TYPE.DELAY, p, p.getLocation(), 0, delay);
@@ -152,10 +166,10 @@ public class RTPTeleport {
         effects.getTitles().showTitle(RTPEffect_Titles.RTP_TITLE_TYPE.FAILED, p, p.getLocation(), 0, 0);
         if (effects.getTitles().sendMsg(RTPEffect_Titles.RTP_TITLE_TYPE.FAILED))
             if (p == sendi)
-                MessagesCore.FAILED_NOTSAFE.send(p, BetterRTP.getInstance().getRTP().maxAttempts);
+                MessagesCore.FAILED_NOTSAFE.send(p, runtime.maxAttempts);
             else
                 MessagesCore.OTHER_NOTSAFE.send(sendi, Arrays.asList(
-                        BetterRTP.getInstance().getRTP().maxAttempts,
+                        runtime.maxAttempts,
                         p.getName()));
     }
 
@@ -170,10 +184,6 @@ public class RTPTeleport {
     }
 
     private boolean sendStatusMessage() {
-        return getPl().getSettings().isStatusMessages();
-    }
-
-    private BetterRTP getPl() {
-        return BetterRTP.getInstance();
+        return runtime.pluginSettings().isStatusMessages();
     }
 }

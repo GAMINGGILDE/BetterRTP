@@ -1,6 +1,7 @@
 package me.SuperRonanCraft.BetterRTP.references.depends;
 
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
+import me.SuperRonanCraft.BetterRTP.player.rtp.RtpRequest;
 import me.SuperRonanCraft.BetterRTP.references.PermissionNode;
 import me.SuperRonanCraft.BetterRTP.references.file.FileOther;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPlayer;
@@ -19,14 +20,30 @@ public class DepEconomy {
     private volatile int hungerCost;
 
     public Reservation reserve(WorldPlayer worldPlayer) {
-        Player player = worldPlayer.getPlayer();
-        int reservedHunger = applicableHungerCost(worldPlayer);
+        return reserve(
+                worldPlayer.getPlayer(),
+                worldPlayer.getPrice(),
+                worldPlayer.getPlayerInfo().isTakeMoney(),
+                worldPlayer.getPlayerInfo().isTakeHunger());
+    }
+
+    public Reservation reserve(RtpRequest request) {
+        return reserve(
+                request.player(),
+                request.world().price(),
+                request.options().takeMoney(),
+                request.options().takeHunger());
+    }
+
+    private Reservation reserve(
+            Player player, int configuredPrice, boolean takeMoney, boolean takeHunger) {
+        int reservedHunger = applicableHungerCost(player, takeHunger);
         if (player.getFoodLevel() < reservedHunger) {
             return Reservation.failed(Failure.HUNGER);
         }
 
         Economy provider = economy;
-        double price = applicablePrice(worldPlayer, provider);
+        double price = applicablePrice(player, configuredPrice, takeMoney, provider);
         if (price <= 0.0D) {
             return Reservation.success(player, null, 0.0D, reservedHunger);
         }
@@ -81,17 +98,26 @@ public class DepEconomy {
     }
 
     private double applicablePrice(WorldPlayer worldPlayer, Economy provider) {
-        if (provider == null
-                || !worldPlayer.getPlayerInfo().isTakeMoney()
-                || PermissionNode.BYPASS_ECONOMY.check(worldPlayer.getPlayer())) {
+        return applicablePrice(
+                worldPlayer.getPlayer(), worldPlayer.getPrice(),
+                worldPlayer.getPlayerInfo().isTakeMoney(), provider);
+    }
+
+    private double applicablePrice(
+            Player player, int configuredPrice, boolean takeMoney, Economy provider) {
+        if (provider == null || !takeMoney || PermissionNode.BYPASS_ECONOMY.check(player)) {
             return 0.0D;
         }
-        return Math.max(0, worldPlayer.getPrice());
+        return Math.max(0, configuredPrice);
     }
 
     private int applicableHungerCost(WorldPlayer worldPlayer) {
         Player player = worldPlayer.getPlayer();
-        if (!worldPlayer.getPlayerInfo().isTakeHunger()
+        return applicableHungerCost(player, worldPlayer.getPlayerInfo().isTakeHunger());
+    }
+
+    private int applicableHungerCost(Player player, boolean takeHunger) {
+        if (!takeHunger
                 || PermissionNode.BYPASS_HUNGER.check(player)
                 || (player.getGameMode() != GameMode.SURVIVAL && player.getGameMode() != GameMode.ADVENTURE)) {
             return 0;

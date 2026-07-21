@@ -6,22 +6,33 @@ import java.util.List;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 
 import lombok.Getter;
-import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.references.customEvents.RTP_SettingUpEvent;
 import me.SuperRonanCraft.BetterRTP.references.file.FileOther;
 import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP;
 import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP_Check;
+import me.SuperRonanCraft.BetterRTP.references.depends.DepEconomy;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.PermissionGroup;
+import me.SuperRonanCraft.BetterRTP.references.rtpinfo.CooldownHandler;
+import me.SuperRonanCraft.BetterRTP.references.settings.Settings;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.RTPWorld;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WORLD_TYPE;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldDefault;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPlayer;
 
+import java.util.function.Supplier;
+import java.util.logging.Logger;
+
 public class RTP {
 
-    @Getter final RTPTeleport teleport = new RTPTeleport();
+    private final DepEconomy economy;
+    private final Settings pluginSettings;
+    private final CooldownHandler cooldowns;
+    private final Supplier<Logger> logger;
+    private final Plugin eventOwner;
+    @Getter private final RTPTeleport teleport;
     @Getter private final RTPSessionManager sessions = new RTPSessionManager();
     //Cache
     public final HashMap<String, String> overriden = new HashMap<>();
@@ -34,6 +45,25 @@ public class RTP {
     @Getter private final HashMap<String, RTPWorld> RTPcustomWorld = new HashMap<>();
     @Getter private final HashMap<String, RTPWorld> RTPworldLocations = new HashMap<>();
     @Getter private final HashMap<String, PermissionGroup> permissionGroups = new HashMap<>();
+
+    /** Compatibility constructor for lifecycle-only use outside the running plugin. */
+    public RTP() {
+        this(null, null, null, () -> Logger.getLogger(RTP.class.getName()), null);
+    }
+
+    public RTP(
+            DepEconomy economy,
+            Settings pluginSettings,
+            CooldownHandler cooldowns,
+            Supplier<Logger> logger,
+            Plugin eventOwner) {
+        this.economy = economy;
+        this.pluginSettings = pluginSettings;
+        this.cooldowns = cooldowns;
+        this.logger = logger;
+        this.eventOwner = eventOwner;
+        this.teleport = new RTPTeleport(this);
+    }
 
     public void load() {
         sessions.cancelAll();
@@ -89,7 +119,8 @@ public class RTP {
             return;
         }
         // Delaying? Else, just go
-        if (pWorld.getPlayerInfo().applyDelay && HelperRTP_Check.applyDelay(pWorld.getPlayer())) {
+        if (rtpPlayer.getRequest().options().applyDelay()
+                && HelperRTP_Check.applyDelay(pWorld.getPlayer())) {
             new RTPDelay(sendi, rtpPlayer, delayTime, cancelOnMove, cancelOnDamage);
         } else {
             if (!teleport.beforeTeleportInstant(sendi, p)) {
@@ -108,7 +139,13 @@ public class RTP {
         sessions.cancelAll();
     }
 
-    private BetterRTP getPl() {
-        return BetterRTP.getInstance();
-    }
+    DepEconomy economy() { return economy; }
+
+    Settings pluginSettings() { return pluginSettings; }
+
+    CooldownHandler cooldowns() { return cooldowns; }
+
+    Logger logger() { return logger.get(); }
+
+    Plugin eventOwner() { return eventOwner; }
 }

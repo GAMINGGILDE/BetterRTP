@@ -1,7 +1,6 @@
 package me.SuperRonanCraft.BetterRTP.player.rtp;
 
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
-import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.references.customEvents.RTP_CancelledEvent;
 import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
 import org.bukkit.Bukkit;
@@ -29,11 +28,11 @@ class RTPDelay implements Listener {
     }
 
     private void delay(CommandSender sendi, int delay) {
-        if (!getPl().getRTP().getTeleport().beforeTeleportDelay(rtp.getPlayer(), delay)) {
+        if (!rtp.runtime().getTeleport().beforeTeleportDelay(rtp.getPlayer(), delay)) {
             task = AsyncHandler.syncLaterAtEntity(rtp.getPlayer(), run(sendi, this), delay * 20L);
             rtp.track(task);
             if (cancelOnMove || cancelOnDamage)
-                Bukkit.getPluginManager().registerEvents(this, BetterRTP.getInstance());
+                Bukkit.getPluginManager().registerEvents(this, rtp.runtime().eventOwner());
         } else {
             rtp.cancel();
         }
@@ -68,7 +67,7 @@ class RTPDelay implements Listener {
         if (task != null)
             task.cancel();
         HandlerList.unregisterAll(this);
-        getPl().getRTP().getTeleport().cancelledTeleport(rtp.getPlayer());
+        rtp.runtime().getTeleport().cancelledTeleport(rtp.getPlayer());
         rtp.cancel();
         Bukkit.getServer().getPluginManager().callEvent(new RTP_CancelledEvent(rtp.getPlayer()));
     }
@@ -79,9 +78,5 @@ class RTPDelay implements Listener {
             if (rtp.isActive())
                 rtp.randomlyTeleport(sendi);
         };
-    }
-
-    private BetterRTP getPl() {
-        return BetterRTP.getInstance();
     }
 }

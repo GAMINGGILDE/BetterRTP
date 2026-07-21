@@ -2,16 +2,13 @@ package me.SuperRonanCraft.BetterRTP.player.rtp;
 
 import lombok.Getter;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
-import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.references.customEvents.RTP_FailedEvent;
 import me.SuperRonanCraft.BetterRTP.references.customEvents.RTP_FindLocationEvent;
 import me.SuperRonanCraft.BetterRTP.references.depends.DepEconomy;
 import me.SuperRonanCraft.BetterRTP.references.database.DatabaseQueue;
 import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP_Check;
 import me.SuperRonanCraft.BetterRTP.references.messages.MessagesCore;
-import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueData;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueHandler;
-import me.SuperRonanCraft.BetterRTP.references.rtpinfo.RandomLocation;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPlayer;
 import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
 import org.bukkit.Bukkit;
@@ -20,6 +17,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,20 +37,33 @@ public class RTPPlayer {
     private final RTP settings;
     @Getter private final WorldPlayer worldPlayer;
     @Getter private final RTP_TYPE type;
+    @Getter private final RtpRequest request;
     private final AtomicInteger attempts = new AtomicInteger();
     private final AtomicBoolean finished = new AtomicBoolean();
     private volatile RTPTransaction transaction;
     private final Set<CompletableFuture<?>> pendingFutures = ConcurrentHashMap.newKeySet();
     private final Set<ScheduledTask> pendingTasks = ConcurrentHashMap.newKeySet();
     private final DatabaseQueue.QueueRangeData queueRange;
+    private final List<String> blockedBlocks;
+    private final RtpCandidateFinder candidateFinder;
 
     RTPPlayer(Player player, RTP settings, WorldPlayer worldPlayer, RTP_TYPE type) {
+        this(player, settings, worldPlayer, type, new RtpCandidateFinder());
+    }
+
+    RTPPlayer(
+            Player player, RTP settings, WorldPlayer worldPlayer, RTP_TYPE type,
+            RtpCandidateFinder candidateFinder) {
         this.player = player;
         this.playerId = player.getUniqueId();
         this.settings = settings;
         this.worldPlayer = worldPlayer;
         this.type = type;
-        this.queueRange = worldPlayer == null ? null : QueueHandler.snapshot(worldPlayer);
+        this.request = worldPlayer == null ? null : RtpRequest.from(worldPlayer);
+        this.queueRange = request == null ? null : QueueHandler.snapshot(request.world());
+        this.blockedBlocks = settings.getBlockList() == null
+                ? List.of() : List.copyOf(settings.getBlockList());
+        this.candidateFinder = candidateFinder;
     }
 
     public int getAttempts() {
@@ -86,13 +97,8 @@ public class RTPPlayer {
         }
 
         try {
-            Location candidate = suppliedLocation;
-            if (candidate == null) {
-                QueueData queueData = QueueHandler.getRandomAsync(worldPlayer, queueRange);
-                candidate = queueData != null
-                        ? queueData.getLocation()
-                        : RandomLocation.generateLocation(worldPlayer);
-            }
+            Location candidate = candidateFinder.select(
+                    suppliedLocation, request.world(), queueRange);
 
             if (candidate == null || candidate.getWorld() == null) {
                 retry(sender);
@@ -100,7 +106,7 @@ public class RTPPlayer {
             }
             loadCandidateChunk(sender, candidate);
         } catch (Throwable throwable) {
-            getPl().getLogger().log(Level.WARNING, "Unable to generate an RTP candidate", throwable);
+            settings.logger().log(Level.WARNING, "Unable to generate an RTP candidate", throwable);
             retry(sender);
         }
     }
@@ -115,17 +121,17 @@ public class RTPPlayer {
             try {
                 chunkFuture = candidate.getWorld().getChunkAtAsync(candidate);
             } catch (Throwable throwable) {
-                getPl().getLogger().log(Level.WARNING,
+                settings.logger().log(Level.WARNING,
                         "Unable to start loading an RTP chunk at " + candidate, throwable);
                 retry(sender);
                 return;
             }
 
             track(chunkFuture.orTimeout(
-                    getPl().getSettings().getChunkLoadTimeoutSeconds(), TimeUnit.SECONDS))
+                    settings.pluginSettings().getChunkLoadTimeoutSeconds(), TimeUnit.SECONDS))
                     .whenComplete((chunk, throwable) -> {
                 if (throwable != null) {
-                    getPl().getLogger().log(Level.WARNING,
+                    settings.logger().log(Level.WARNING,
                             "Unable to load an RTP chunk at " + candidate, throwable);
                     retry(sender);
                     return;
@@ -141,12 +147,10 @@ public class RTPPlayer {
         }
 
         try {
-            Location safeLocation = RandomLocation.getSafeLocation(
-                    worldPlayer.getWorldtype(), worldPlayer.getWorld(), candidate,
-                    worldPlayer.getMinY(), worldPlayer.getMaxY(), worldPlayer.getBiomes());
+            Location safeLocation = candidateFinder.validate(
+                    candidate, request.world(), blockedBlocks);
 
-            if (safeLocation == null || !RTPPluginValidation.checkLocation(safeLocation)) {
-                QueueHandler.remove(candidate);
+            if (safeLocation == null) {
                 retry(sender);
                 return;
             }
@@ -154,7 +158,7 @@ public class RTPPlayer {
             safeLocation.add(0.5, 0, 0.5);
             AsyncHandler.syncAtEntity(player, () -> completeTeleport(sender, safeLocation));
         } catch (Throwable throwable) {
-            getPl().getLogger().log(Level.WARNING,
+            settings.logger().log(Level.WARNING,
                     "Unable to validate an RTP candidate at " + candidate, throwable);
             retry(sender);
         }
@@ -165,14 +169,14 @@ public class RTPPlayer {
             return;
         }
 
-        DepEconomy.Reservation reservation = getPl().getEco().reserve(worldPlayer);
+        DepEconomy.Reservation reservation = settings.economy().reserve(request);
         if (!reservation.successful()) {
             notifyReservationFailure(sender, reservation.failure());
             finish();
             return;
         }
 
-        boolean applyCooldown = worldPlayer.getPlayerInfo().isApplyCooldown()
+        boolean applyCooldown = request.options().applyCooldown()
                 && HelperRTP_Check.applyCooldown(player);
         transaction = new RTPTransaction(
                 () -> {
@@ -180,7 +184,7 @@ public class RTPPlayer {
                         reservation.commitHunger();
                     } finally {
                         if (applyCooldown) {
-                            getPl().getCooldowns().add(player, worldPlayer.getWorld());
+                            settings.cooldowns().add(player, request.world().world());
                         }
                     }
                 },
@@ -188,7 +192,7 @@ public class RTPPlayer {
 
         location.setYaw(player.getLocation().getYaw());
         location.setPitch(player.getLocation().getPitch());
-        settings.teleport.sendPlayer(sender, this, location);
+        settings.getTeleport().sendPlayer(sender, this, location);
     }
 
     private void notifyReservationFailure(CommandSender sender, DepEconomy.Failure failure) {
@@ -212,7 +216,7 @@ public class RTPPlayer {
             return;
         }
         try {
-            settings.teleport.failedTeleport(player, sender);
+            settings.getTeleport().failedTeleport(player, sender);
             Bukkit.getPluginManager().callEvent(new RTP_FailedEvent(this));
         } finally {
             closeSession();
@@ -265,15 +269,15 @@ public class RTPPlayer {
         return !finished.get() && settings.getSessions().isActive(this);
     }
 
+    RTP runtime() {
+        return settings;
+    }
+
     private void closeSession() {
         pendingFutures.forEach(future -> future.cancel(true));
         pendingFutures.clear();
         pendingTasks.forEach(ScheduledTask::cancel);
         pendingTasks.clear();
         settings.getSessions().finished(this);
-    }
-
-    private BetterRTP getPl() {
-        return BetterRTP.getInstance();
     }
 }
