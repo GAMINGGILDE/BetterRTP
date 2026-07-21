@@ -14,10 +14,10 @@ jobs:
 
     steps:
       - name: Repository auschecken
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Java 25 einrichten
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
         with:
           distribution: temurin
           java-version: "25"
@@ -36,7 +36,7 @@ jobs:
           fi
 
           version="${tag#v}"
-          project_version="$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)"
+          project_version="$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)"
           if [[ "${project_version}" != "${version}" ]]; then
             echo "Tag-Version '${version}' stimmt nicht mit der Projektversion '${project_version}' überein." >&2
             exit 1
@@ -46,7 +46,7 @@ jobs:
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
 
       - name: Release-JAR bauen
-        run: mvn clean package --batch-mode --no-transfer-progress
+        run: ./mvnw clean package --batch-mode --no-transfer-progress
 
       - name: Release-Dateien vorbereiten
         shell: bash

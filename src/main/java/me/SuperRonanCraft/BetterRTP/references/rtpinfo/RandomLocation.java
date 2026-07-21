@@ -63,19 +63,18 @@ public class RandomLocation {
         //Max and Min Y
         for (int y = minY + 1; y < maxY/*world.getMaxHeight()*/; y++) {
             Block block_current = world.getBlockAt(x, y, z);
-            if (block_current.getType().name().endsWith("AIR") || !block_current.getType().isSolid()) {
-                if (!block_current.getType().name().endsWith("AIR") &&
-                        !block_current.getType().isSolid()) { //Block is not a solid (ex: lava, water...)
-                    String block_in = block_current.getType().name();
-                    if (badBlock(block_in, x, y, z, world, null))
-                        continue;
-                }
-                String block = world.getBlockAt(x, y - 1, z).getType().name();
-                if (block.endsWith("AIR")) //Block below is air, skip
-                    continue;
-                if (world.getBlockAt(x, y + 1, z).getType().name().endsWith("AIR") //Head space
-                        && !badBlock(block, x, y, z, world, biomes)) //Valid block
-                    return new Location(world, x, y, z);
+            boolean feetAir = block_current.getType().name().endsWith("AIR");
+            boolean headAir = world.getBlockAt(x, y + 1, z).getType().name().endsWith("AIR");
+            if (!LocationSafetyPolicy.hasBodySpace(
+                    block_current.getType().isSolid(), feetAir, headAir)) {
+                continue;
+            }
+            if (!feetAir && badBlock(block_current.getType().name(), x, y, z, world, null)) {
+                continue;
+            }
+            String block = world.getBlockAt(x, y - 1, z).getType().name();
+            if (!block.endsWith("AIR") && !badBlock(block, x, y, z, world, biomes)) {
+                return new Location(world, x, y, z);
             }
         }
         return null;
@@ -83,18 +82,10 @@ public class RandomLocation {
 
     // Bad blocks, or bad biome
     public static boolean badBlock(String block, int x, int y, int z, World world, List<String> biomes) {
-        for (String currentBlock : BetterRTP.getInstance().getRTP().getBlockList()) //Check Block
-            if (currentBlock.equalsIgnoreCase(block))
-                return true;
-        //Check Biomes
-        if (biomes == null || biomes.isEmpty())
-            return false;
-        String biomeCurrent = BiomeHelper.name(world.getBiome(x, y, z));
-        for (String biome : biomes)
-            if (biomeCurrent.toUpperCase().contains(biome.toUpperCase()))
-                return false;
-        return true;
-        //FALSE MEANS NO BAD BLOCKS/BIOME WHERE FOUND!
+        String biome = biomes == null || biomes.isEmpty()
+                ? null : BiomeHelper.name(world.getBiome(x, y, z));
+        return !LocationSafetyPolicy.isAllowedSurface(
+                block, biome, BetterRTP.getInstance().getRTP().getBlockList(), biomes);
     }
 
     public static void runChunkTest() {

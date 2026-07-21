@@ -22,6 +22,7 @@
         <junit.version>6.0.3</junit.version>
         <sqlite-jdbc.version>3.53.2.0</sqlite-jdbc.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.build.outputTimestamp>2026-01-01T00:00:00Z</project.build.outputTimestamp>
     </properties>
 
     <repositories>
@@ -50,9 +51,26 @@
     <build>
         <finalName>${project.artifactId}-${project.version}</finalName>
         <resources><resource><directory>src/main/resources</directory><filtering>true</filtering></resource></resources>
+        <pluginManagement>
+            <plugins>
+                <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-clean-plugin</artifactId><version>3.5.0</version></plugin>
+                <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-resources-plugin</artifactId><version>3.5.0</version></plugin>
+                <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-jar-plugin</artifactId><version>3.5.0</version></plugin>
+                <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-help-plugin</artifactId><version>3.5.1</version></plugin>
+                <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-install-plugin</artifactId><version>3.1.4</version></plugin>
+                <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-deploy-plugin</artifactId><version>3.1.4</version></plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><version>3.14.0</version>
+                <groupId>org.apache.maven.plugins</groupId><artifactId>maven-enforcer-plugin</artifactId><version>3.6.3</version>
+                <executions><execution><id>build-werkzeuge-pruefen</id><goals><goal>enforce</goal></goals><configuration><rules>
+                    <requireMavenVersion><version>[3.9.16,3.9.17)</version></requireMavenVersion>
+                    <requireJavaVersion><version>[25,26)</version></requireJavaVersion>
+                </rules></configuration></execution></executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><version>3.14.1</version>
                 <configuration>
                     <release>${maven.compiler.release}</release>
                     <annotationProcessorPaths><path><groupId>org.projectlombok</groupId><artifactId>lombok</artifactId><version>${lombok.version}</version></path></annotationProcessorPaths>

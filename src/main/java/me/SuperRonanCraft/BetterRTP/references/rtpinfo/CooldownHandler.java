@@ -116,13 +116,12 @@ public class CooldownHandler {
     }
 
     public long timeLeft(CommandSender sendi, CooldownData data, WorldPlayer pWorld) {
-        long cooldown = data.getTime();
-        long timeLeft = ((cooldown / 1000) + pWorld.getCooldown()) - (System.currentTimeMillis() / 1000);
-        return timeLeft * 1000L;
+        return CooldownPolicy.remainingMillis(
+                data.getTime(), pWorld.getCooldown(), System.currentTimeMillis());
     }
 
     public boolean locked(Player player) {
-        return lockedAfter > 0 && getData(player).getRtpCount() >= lockedAfter;
+        return CooldownPolicy.isLocked(getData(player).getRtpCount(), lockedAfter);
     }
 
     private void savePlayer(PlayerData playerData, @Nullable String worldName, @Nullable CooldownData data) {

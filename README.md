@@ -25,9 +25,8 @@ Zum Bauen von BetterRTP werden benötigt:
 
 - Git
 - JDK 25
-- Apache Maven 3.9 oder neuer, verfügbar über den Befehl `mvn`
 
-Das Projekt wird mit Java 25 gebaut und erzeugt Java-25-Bytecode.
+Der mitgelieferte Maven Wrapper lädt automatisch die festgelegte Maven-Version 3.9.16. Das Projekt erzwingt Java 25 und erzeugt Java-25-Bytecode.
 
 ## Plugin bauen
 
@@ -36,8 +35,10 @@ Klone diesen Fork und führe Maven im Stammverzeichnis des Repositorys aus:
 ```bash
 git clone https://github.com/GAMINGGILDE/BetterRTP.git
 cd BetterRTP
-mvn clean package
+./mvnw clean package
 ```
+
+Unter Windows kann stattdessen `mvnw.cmd clean package` verwendet werden.
 
 Das fertige, einschließlich seiner benötigten Bibliotheken gepackte Server-Plugin wird hier erzeugt:
 
@@ -45,7 +46,7 @@ Das fertige, einschließlich seiner benötigten Bibliotheken gepackte Server-Plu
 target/BetterRTP-4.0.0-SNAPSHOT.jar
 ```
 
-`mvn test` kompiliert das Projekt und führt die automatisierten Unit-Tests aus. Diese prüfen unter anderem die Kreis- und Quadratberechnung sowie die Erzeugung gültiger RTP-Koordinaten.
+`./mvnw test` kompiliert das Projekt und führt die automatisierten Unit-Tests aus. Diese prüfen unter anderem die Kreis- und Quadratberechnung sowie die Erzeugung gültiger RTP-Koordinaten.
 
 ## Veröffentlichungen
 
@@ -58,7 +59,7 @@ Die Version im Tag ohne das führende `v` muss exakt mit der Version in der `pom
 Das optionale Profil `dev` schreibt die erzeugte Core-JAR in das lokale Plugin-Verzeichnis, das in der `pom.xml` konfiguriert ist:
 
 ```bash
-mvn clean package -Pdev
+./mvnw clean package -Pdev
 ```
 
 Dieser Ausgabepfad ist auf die jeweilige Entwicklungsumgebung zugeschnitten. In CI-Systemen und auf anderen Rechnern sollte der normale Build-Befehl verwendet werden.
@@ -114,7 +115,7 @@ Fehlerberichte und Pull Requests sind über den [Issue-Tracker von GAMINGGILDE](
 Führe vor dem Erstellen eines Pull Requests folgenden Befehl aus:
 
 ```bash
-mvn clean package
+./mvnw clean package
 ```
 
 ## Danksagung

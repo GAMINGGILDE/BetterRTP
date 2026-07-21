@@ -47,12 +47,7 @@ public class QueueHandler implements Listener { //Randomly queues up some safe l
         if (queueData.size() <= QueueGenerator.QUEUE_MIN) {
             BetterRTP.getInstance().getQueue().generator.generate(rtpWorld, range);
         }
-        for (QueueData candidate : queueData) {
-            if (DatabaseHandler.getQueue().claim(candidate.getDatabaseId())) {
-                return candidate;
-            }
-        }
-        return null;
+        return QueueSelection.claimFirst(queueData, DatabaseHandler.getQueue()::claim);
     }
 
     public static List<QueueData> getApplicableAsync(

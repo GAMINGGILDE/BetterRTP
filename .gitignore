@@ -4,6 +4,7 @@ bin/
 .classpath/
 .project/
 target
+smoke-test/
 .idea
 *.iml
 BetterRTP.wiki/
