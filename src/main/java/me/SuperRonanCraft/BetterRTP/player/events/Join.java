@@ -25,7 +25,7 @@ public class Join {
     //Updater
     private static void updater(Player p) {
         if (!getPl().getFiles().getType(FileOther.FILETYPE.CONFIG).getBoolean("Settings.DisableUpdater") && PermissionNode.UPDATER.check(p)) {
-            if (!getPl().getPluginMeta().getVersion().equals(Updater.updatedVersion)) {
+            if (Updater.isUpdateAvailable()) {
                 String currentVersion = getPl().getPluginMeta().getVersion();
                 String newVersion = Updater.updatedVersion;
 

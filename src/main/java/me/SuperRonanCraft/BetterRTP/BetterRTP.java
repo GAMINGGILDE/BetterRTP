@@ -13,6 +13,7 @@ import me.SuperRonanCraft.BetterRTP.references.depends.DepEconomy;
 import me.SuperRonanCraft.BetterRTP.references.depends.DepPlaceholderAPI;
 import me.SuperRonanCraft.BetterRTP.references.file.Files;
 import me.SuperRonanCraft.BetterRTP.references.file.ConfigurationValidator;
+import me.SuperRonanCraft.BetterRTP.references.file.FileOther;
 import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP;
 import me.SuperRonanCraft.BetterRTP.references.invs.RTPInventories;
 import me.SuperRonanCraft.BetterRTP.references.messages.Message_RTP;
@@ -61,7 +62,10 @@ public class BetterRTP extends JavaPlugin {
         instance = this;
         registerDependencies();
         loadAll();
-        new Updater(this);
+        if (!files.getType(FileOther.FILETYPE.CONFIG)
+                .getBoolean("Settings.DisableUpdater")) {
+            new Updater(this);
+        }
         listener.registerEvents(this);
         queue.registerEvents(this);
         try {
