@@ -43,13 +43,13 @@ public class DepPlaceholderAPI extends PlaceholderExpansion {
             return String.valueOf(data.getRtpCount());
         } else if (request.startsWith("cooldown")) {
             if (request.equalsIgnoreCase("cooldown")) {
-                return cooldown(data, player.getWorld());
+                return cooldown(player, player.getWorld());
             } else if (request.startsWith("cooldown_")) {
-                return cooldown(data, getWorld(request.replace("cooldown_", "")));
+                return cooldown(player, getWorld(request.replace("cooldown_", "")));
             } else if (request.equalsIgnoreCase("cooldowntime")) {
-                return cooldownTime(data, player.getWorld());
+                return cooldownTime(player, player.getWorld());
             } else if (request.startsWith("cooldowntime_")) {
-                return cooldownTime(data, getWorld(request.replace("cooldowntime_", "")));
+                return cooldownTime(player, getWorld(request.replace("cooldowntime_", "")));
             }
         } else if (request.startsWith("canrtp")) {
             if (request.equalsIgnoreCase("canrtp")) {
@@ -85,19 +85,19 @@ public class DepPlaceholderAPI extends PlaceholderExpansion {
         return null;
     }
 
-    private String cooldown(PlayerData data, World world) {
+    private String cooldown(Player player, World world) {
         if (world == null) return "Invalid World";
-        long lng = BetterRTP.getInstance().getCooldowns().locked(data.player) ? -1L :
-                HelperRTP_Check.getCooldown(data.player, HelperRTP.getPlayerWorld(new RTPSetupInformation(world, data.player, data.player, true)));
+        long lng = BetterRTP.getInstance().getCooldowns().locked(player) ? -1L :
+                HelperRTP_Check.getCooldown(player, HelperRTP.getPlayerWorld(new RTPSetupInformation(world, player, player, true)));
         return HelperDate.total(lng);
     }
 
-    private String cooldownTime(PlayerData data, World world) {
+    private String cooldownTime(Player player, World world) {
         if (world == null) return "Invalid World";
-        RTPSetupInformation setup_info = new RTPSetupInformation(HelperRTP.getActualWorld(data.player, world), data.player, data.player, true);
+        RTPSetupInformation setup_info = new RTPSetupInformation(HelperRTP.getActualWorld(player, world), player, player, true);
         WorldPlayer pWorld = HelperRTP.getPlayerWorld(setup_info);
-        Long cooldownTime = BetterRTP.getInstance().getCooldowns().locked(data.player) ? -1L :
-                (HelperRTP_Check.applyCooldown(data.player) ? pWorld.getCooldown() * 1000L : 0L);
+        Long cooldownTime = BetterRTP.getInstance().getCooldowns().locked(player) ? -1L :
+                (HelperRTP_Check.applyCooldown(player) ? pWorld.getCooldown() * 1000L : 0L);
         return HelperDate.total(cooldownTime);
     }
 

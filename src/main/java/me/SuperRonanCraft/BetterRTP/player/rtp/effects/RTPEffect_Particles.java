@@ -2,7 +2,6 @@ package me.SuperRonanCraft.BetterRTP.player.rtp.effects;
 
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.references.file.FileOther;
-import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
@@ -70,24 +69,23 @@ public class RTPEffect_Particles {
 
     public void display(Player p) {
         if (!enabled) return;
-        AsyncHandler.async(() -> {
-            try { //Incase the library errors out
-                switch (shape) {
-                    case "TELEPORT":
-                        partTeleport(p);
-                        break;
-                    case "EXPLODE":
-                        partExplosion(p);
-                        break;
-                    default: //Super redundant, but... just future proofing
-                    case "SCAN":
-                        partScan(p);
-                        break;
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
+        try {
+            switch (shape) {
+                case "TELEPORT":
+                    partTeleport(p);
+                    break;
+                case "EXPLODE":
+                    partExplosion(p);
+                    break;
+                default:
+                case "SCAN":
+                    partScan(p);
+                    break;
             }
-        });
+        } catch (Exception e) {
+            getPl().getLogger().log(java.util.logging.Level.WARNING,
+                    "Unable to display RTP particles for " + p.getName(), e);
+        }
     }
 
     private void partScan(Player p) { //Particles with negative velocity

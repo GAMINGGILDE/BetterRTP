@@ -9,7 +9,6 @@ public class RTPEffects {
     @Getter final RTPEffect_Sounds sounds = new RTPEffect_Sounds();
     @Getter final RTPEffect_Titles titles = new RTPEffect_Titles();
 
-    //public HashMap<Player, List<CompletableFuture<Chunk>>> playerLoads = new HashMap<>();
 
     public void load() {
         particles.load();

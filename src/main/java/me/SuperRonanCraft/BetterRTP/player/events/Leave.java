@@ -9,7 +9,7 @@ class Leave {
 
     static void event(PlayerQuitEvent e) {
         Player p = e.getPlayer();
-        BetterRTP.getInstance().getPInfo().endTeleport(p);
+        BetterRTP.getInstance().getRTP().cancel(p);
         HelperPlayer.unload(p);
     }
 }

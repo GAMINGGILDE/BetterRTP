@@ -22,6 +22,7 @@ import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPlayer;
 public class RTP {
 
     @Getter final RTPTeleport teleport = new RTPTeleport();
+    @Getter private final RTPSessionManager sessions = new RTPSessionManager();
     //Cache
     public final HashMap<String, String> overriden = new HashMap<>();
     @Getter List<String> disabledWorlds, blockList;
@@ -35,6 +36,7 @@ public class RTP {
     @Getter private final HashMap<String, PermissionGroup> permissionGroups = new HashMap<>();
 
     public void load() {
+        sessions.cancelAll();
         FileOther.FILETYPE config = FileOther.FILETYPE.CONFIG;
         disabledWorlds = config.getStringList("DisabledWorlds");
         maxAttempts = config.getInt("Settings.MaxAttempts");
@@ -82,11 +84,10 @@ public class RTP {
     private void rtp(CommandSender sendi, WorldPlayer pWorld, RTP_TYPE type) {
         //Cooldown
         Player p = pWorld.getPlayer();
-        if (!getPl().getPInfo().beginTeleport(p)) {
+        RTPPlayer rtpPlayer = new RTPPlayer(p, this, pWorld, type);
+        if (!sessions.register(rtpPlayer)) {
             return;
         }
-        //Setup player rtp methods
-        RTPPlayer rtpPlayer = new RTPPlayer(p, this, pWorld, type);
         // Delaying? Else, just go
         if (pWorld.getPlayerInfo().applyDelay && HelperRTP_Check.applyDelay(pWorld.getPlayer())) {
             new RTPDelay(sendi, rtpPlayer, delayTime, cancelOnMove, cancelOnDamage);
@@ -97,6 +98,14 @@ public class RTP {
                 rtpPlayer.cancel();
             }
         }
+    }
+
+    public void cancel(Player player) {
+        sessions.cancel(player);
+    }
+
+    public void shutdown() {
+        sessions.cancelAll();
     }
 
     private BetterRTP getPl() {

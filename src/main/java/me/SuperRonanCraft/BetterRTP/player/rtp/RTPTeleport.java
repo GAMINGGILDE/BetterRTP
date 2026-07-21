@@ -1,6 +1,8 @@
 package me.SuperRonanCraft.BetterRTP.player.rtp;
 
 import java.util.Arrays;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import org.bukkit.Location;
@@ -37,7 +39,9 @@ public class RTPTeleport {
             RTP_TeleportEvent event = new RTP_TeleportEvent(p, location, wPlayer.getWorldtype());
             getPl().getServer().getPluginManager().callEvent(event);
             Location loc = event.getLocation();
-            AsyncHandler.teleportAsync(p, loc).whenComplete((success, throwable) -> {
+            CompletableFuture<Boolean> teleport = session.track(AsyncHandler.teleportAsync(p, loc)
+                    .orTimeout(getPl().getSettings().getTeleportTimeoutSeconds(), TimeUnit.SECONDS));
+            teleport.whenComplete((success, throwable) -> {
                 if (throwable != null) {
                     getPl().getLogger().log(Level.WARNING,
                             "Unable to teleport " + p.getName() + " asynchronously", throwable);

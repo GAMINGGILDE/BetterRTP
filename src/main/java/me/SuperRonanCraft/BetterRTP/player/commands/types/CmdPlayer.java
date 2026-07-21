@@ -30,20 +30,18 @@ public class CmdPlayer implements RTPCommand, RTPCommandHelpable {
     //rtp player <player> <world> <RTP_PlayerInfo.RTP_PLAYERINFO_FLAG...>
     public void execute(CommandSender sendi, String label, String[] args) {
         if (args.length == 2)
-            if (Bukkit.getPlayer(args[1]) != null && Bukkit.getPlayer(args[1]).isOnline()) {
+            if (Bukkit.getPlayer(args[1]) != null) {
                 HelperRTP.tp(Bukkit.getPlayer(args[1]),
                         sendi,
-                        Bukkit.getPlayer(args[1]).getWorld(),
+                        null,
                         null,
                         RTP_TYPE.FORCED,
                         null,
                         new RTP_PlayerInfo());
-            } else if (Bukkit.getPlayer(args[1]) != null)
-                MessagesCore.NOTONLINE.send(sendi, args[1]);
-            else
+            } else
                 usage(sendi, label);
         else if (args.length >= 3)
-            if (Bukkit.getPlayer(args[1]) != null && Bukkit.getPlayer(args[1]).isOnline()) {
+            if (Bukkit.getPlayer(args[1]) != null) {
                 World world = Bukkit.getWorld(args[2]);
                 if (world != null) {
                     HelperRTP.tp(Bukkit.getPlayer(args[1]),
@@ -55,9 +53,7 @@ public class CmdPlayer implements RTPCommand, RTPCommandHelpable {
                             getFlags(args));
                 } else
                     MessagesCore.NOTEXIST.send(sendi, args[2]);
-            } else if (Bukkit.getPlayer(args[1]) != null)
-                MessagesCore.NOTONLINE.send(sendi, args[1]);
-            else
+            } else
                 usage(sendi, label);
         else
             usage(sendi, label);

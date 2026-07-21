@@ -16,6 +16,19 @@ public class AsyncHandler {
         Bukkit.getAsyncScheduler().runNow(getPlugin(), task -> runnable.run());
     }
 
+    public static CompletableFuture<Void> asyncFuture(Runnable runnable) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        Bukkit.getAsyncScheduler().runNow(getPlugin(), task -> {
+            try {
+                runnable.run();
+                future.complete(null);
+            } catch (Throwable throwable) {
+                future.completeExceptionally(throwable);
+            }
+        });
+        return future;
+    }
+
     public static void sync(Runnable runnable) {
         Bukkit.getGlobalRegionScheduler().run(getPlugin(), task -> runnable.run());
     }

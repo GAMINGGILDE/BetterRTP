@@ -2,7 +2,6 @@ package me.SuperRonanCraft.BetterRTP.references.database;
 
 import lombok.NonNull;
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
-import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
 
 import java.io.File;
 import java.io.IOException;
@@ -64,7 +63,7 @@ public abstract class SQLite {
             return;
         }
 
-        AsyncHandler.async(() -> {
+        SQLiteExecutor.executor().submit(() -> {
             Connection connection = getSQLConnection();
             try {
                 Statement s = connection.createStatement();

@@ -2,26 +2,30 @@ package me.SuperRonanCraft.BetterRTP.references.web;
 
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
-import org.bukkit.Bukkit;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URLConnection;
+import java.util.logging.Logger;
 
 public class Updater {
 
     public static String updatedVersion = BetterRTP.getInstance().getPluginMeta().getVersion();
 
     public Updater(BetterRTP pl) {
+        Logger logger = pl.getLogger();
+        String currentVersion = pl.getPluginMeta().getVersion();
         AsyncHandler.async(() -> {
             try {
                 URLConnection con = URI.create(getUrl() + project()).toURL().openConnection();
+                con.setConnectTimeout(5_000);
+                con.setReadTimeout(5_000);
                 BufferedReader reader = new BufferedReader(new InputStreamReader(con.getInputStream()));
                 updatedVersion = reader.readLine();
             } catch (Exception ex) {
-                Bukkit.getConsoleSender().sendMessage("[BetterRTP] Failed to check for an update on spigot");
-                updatedVersion = pl.getPluginMeta().getVersion();
+                logger.warning("Failed to check for a BetterRTP update");
+                updatedVersion = currentVersion;
             }
         });
     }

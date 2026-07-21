@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 public class CmdLogger implements RTPCommand {
 
@@ -43,7 +42,7 @@ public class CmdLogger implements RTPCommand {
                 sendi.sendMessage("Execute `" + cmd + " _UPLOAD_`" + " to upload log to https://logs.ronanplugins.com");
             }
         } else {
-            CompletableFuture.runAsync(() -> {
+            me.SuperRonanCraft.BetterRTP.versions.AsyncHandler.async(() -> {
                 String key = LogUploader.post(BetterRTP.getInstance().getRtpLogger().getFile());
                 if (key == null) {
                     Message.sms(sendi, new ArrayList<>(Collections.singletonList("&cAn error occured attempting to upload log!")), null);

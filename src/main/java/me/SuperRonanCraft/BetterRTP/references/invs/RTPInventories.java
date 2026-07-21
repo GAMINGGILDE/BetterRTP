@@ -4,6 +4,7 @@ import me.SuperRonanCraft.BetterRTP.references.invs.enums.RTPInventory_Defaults;
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
 
 import java.util.HashMap;
 
@@ -21,11 +22,16 @@ public class RTPInventories {
 
     public void closeAll() {
         BetterRTP main = BetterRTP.getInstance();
-        for (Player p : Bukkit.getOnlinePlayers())
-            if (main.getPInfo().playerExists(p)) {
-                main.getPInfo().clearInvs(p);
-                p.closeInventory();
+        AsyncHandler.sync(() -> {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                AsyncHandler.syncAtEntity(player, () -> {
+                    if (main.getPInfo().playerExists(player)) {
+                        player.closeInventory();
+                    }
+                });
             }
+            main.getPInfo().clearInvs();
+        });
     }
 
     public RTPInventory_Defaults getInv(RTP_INV_SETTINGS type) {

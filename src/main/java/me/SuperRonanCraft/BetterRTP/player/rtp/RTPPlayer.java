@@ -1,10 +1,12 @@
 package me.SuperRonanCraft.BetterRTP.player.rtp;
 
 import lombok.Getter;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.references.customEvents.RTP_FailedEvent;
 import me.SuperRonanCraft.BetterRTP.references.customEvents.RTP_FindLocationEvent;
 import me.SuperRonanCraft.BetterRTP.references.depends.DepEconomy;
+import me.SuperRonanCraft.BetterRTP.references.database.DatabaseQueue;
 import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP_Check;
 import me.SuperRonanCraft.BetterRTP.references.messages.MessagesCore;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueData;
@@ -18,6 +20,10 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -29,18 +35,24 @@ import java.util.logging.Level;
 public class RTPPlayer {
 
     @Getter private final Player player;
+    @Getter private final UUID playerId;
     private final RTP settings;
     @Getter private final WorldPlayer worldPlayer;
     @Getter private final RTP_TYPE type;
     private final AtomicInteger attempts = new AtomicInteger();
     private final AtomicBoolean finished = new AtomicBoolean();
     private volatile RTPTransaction transaction;
+    private final Set<CompletableFuture<?>> pendingFutures = ConcurrentHashMap.newKeySet();
+    private final Set<ScheduledTask> pendingTasks = ConcurrentHashMap.newKeySet();
+    private final DatabaseQueue.QueueRangeData queueRange;
 
     RTPPlayer(Player player, RTP settings, WorldPlayer worldPlayer, RTP_TYPE type) {
         this.player = player;
+        this.playerId = player.getUniqueId();
         this.settings = settings;
         this.worldPlayer = worldPlayer;
         this.type = type;
+        this.queueRange = worldPlayer == null ? null : QueueHandler.snapshot(worldPlayer);
     }
 
     public int getAttempts() {
@@ -76,7 +88,7 @@ public class RTPPlayer {
         try {
             Location candidate = suppliedLocation;
             if (candidate == null) {
-                QueueData queueData = QueueHandler.getRandomAsync(worldPlayer);
+                QueueData queueData = QueueHandler.getRandomAsync(worldPlayer, queueRange);
                 candidate = queueData != null
                         ? queueData.getLocation()
                         : RandomLocation.generateLocation(worldPlayer);
@@ -109,7 +121,9 @@ public class RTPPlayer {
                 return;
             }
 
-            chunkFuture.whenComplete((chunk, throwable) -> {
+            track(chunkFuture.orTimeout(
+                    getPl().getSettings().getChunkLoadTimeoutSeconds(), TimeUnit.SECONDS))
+                    .whenComplete((chunk, throwable) -> {
                 if (throwable != null) {
                     getPl().getLogger().log(Level.WARNING,
                             "Unable to load an RTP chunk at " + candidate, throwable);
@@ -201,12 +215,24 @@ public class RTPPlayer {
             settings.teleport.failedTeleport(player, sender);
             Bukkit.getPluginManager().callEvent(new RTP_FailedEvent(this));
         } finally {
-            getPl().getPInfo().endTeleport(player);
+            closeSession();
         }
     }
 
     void cancel() {
         finish();
+    }
+
+    <T> CompletableFuture<T> track(CompletableFuture<T> future) {
+        pendingFutures.add(future);
+        future.whenComplete((result, throwable) -> pendingFutures.remove(future));
+        return future;
+    }
+
+    void track(ScheduledTask task) {
+        if (task != null) {
+            pendingTasks.add(task);
+        }
     }
 
     void finish() {
@@ -217,7 +243,7 @@ public class RTPPlayer {
                     currentTransaction.rollback();
                 }
             } finally {
-                getPl().getPInfo().endTeleport(player);
+                closeSession();
             }
         }
     }
@@ -230,13 +256,21 @@ public class RTPPlayer {
                     currentTransaction.commit();
                 }
             } finally {
-                getPl().getPInfo().endTeleport(player);
+                closeSession();
             }
         }
     }
 
     boolean isActive() {
-        return !finished.get() && getPl().getPInfo().isTeleporting(player);
+        return !finished.get() && settings.getSessions().isActive(this);
+    }
+
+    private void closeSession() {
+        pendingFutures.forEach(future -> future.cancel(true));
+        pendingFutures.clear();
+        pendingTasks.forEach(ScheduledTask::cancel);
+        pendingTasks.clear();
+        settings.getSessions().finished(this);
     }
 
     private BetterRTP getPl() {

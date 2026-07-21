@@ -30,6 +30,7 @@ import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WORLD_TYPE;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldLocation;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPermissionGroup;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPlayer;
+import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
 
 public class HelperRTP {
 
@@ -79,23 +80,22 @@ public class HelperRTP {
                           RTP_TYPE rtpType,
                           @Nullable WorldLocation location,
                           @NotNull RTP_PlayerInfo playerInfo) {
-        world = getActualWorld(player, world, location);
-        RTPSetupInformation setup_info = new RTPSetupInformation(
-                world,
-                sendi,
-                player,
-                true,
-                biomes,
-                rtpType,
-                location,
-                playerInfo
-        );
-        tp(player, sendi, setup_info);
+        World requestedWorld = world;
+        AsyncHandler.syncAtEntity(player, () -> {
+            World actualWorld = getActualWorld(player, requestedWorld, location);
+            RTPSetupInformation setupInfo = new RTPSetupInformation(
+                    actualWorld, sendi, player, true, biomes, rtpType, location, playerInfo);
+            tpOnEntity(player, sendi, setupInfo);
+        });
     }
 
     public static void tp(@NotNull Player player,
                           CommandSender sendi,
                           @NotNull RTPSetupInformation setup_info) {
+        AsyncHandler.syncAtEntity(player, () -> tpOnEntity(player, sendi, setup_info));
+    }
+
+    private static void tpOnEntity(Player player, CommandSender sendi, RTPSetupInformation setup_info) {
         //RTP request cancelled reason
         WorldPlayer pWorld = getPlayerWorld(setup_info);
         RTP_ERROR_REQUEST_REASON cantReason = HelperRTP_Check.canRTP(player, sendi, pWorld, setup_info.getPlayerInfo());

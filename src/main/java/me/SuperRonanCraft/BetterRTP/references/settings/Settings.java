@@ -21,6 +21,8 @@ public class Settings {
     @Getter private boolean useLocationsInSameWorld;
     @Getter private boolean permissionGroupEnabled;
     @Getter private boolean queueEnabled;
+    @Getter private int chunkLoadTimeoutSeconds;
+    @Getter private int teleportTimeoutSeconds;
     //Placeholders
     @Getter private String placeholder_true;
     @Getter private String placeholder_nopermission;
@@ -49,6 +51,8 @@ public class Settings {
         statusMessages = config.getBoolean("Settings.StatusMessages");
         permissionGroupEnabled = config.getBoolean("PermissionGroup.Enabled");
         queueEnabled = config.getBoolean("Settings.Queue.Enabled");
+        chunkLoadTimeoutSeconds = Math.max(1, config.getInt("Settings.Timeouts.ChunkLoadSeconds"));
+        teleportTimeoutSeconds = Math.max(1, config.getInt("Settings.Timeouts.TeleportSeconds"));
         locationEnabled = FileOther.FILETYPE.LOCATIONS.getBoolean("Enabled");
         useLocationIfAvailable = FileOther.FILETYPE.LOCATIONS.getBoolean("UseLocationIfAvailable");
         locationNeedPermission = FileOther.FILETYPE.LOCATIONS.getBoolean("RequirePermission");

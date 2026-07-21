@@ -59,7 +59,7 @@ public class DatabaseQueue extends SQLite {
     public List<QueueData> getInRange(QueueRangeData range) {
         final List<QueueData> queueDataList = new ArrayList<>();
         try {
-            SQLiteExecutor.EXECUTOR.submit(() -> {
+            SQLiteExecutor.executor().submit(() -> {
                 Connection conn = null;
                 PreparedStatement ps = null;
                 ResultSet rs = null;
@@ -70,7 +70,7 @@ public class DatabaseQueue extends SQLite {
                             + COLUMNS.X.name + " BETWEEN ? AND ? AND "
                             + COLUMNS.Z.name + " BETWEEN ? AND ? "
                             + "ORDER BY RANDOM() LIMIT ?");
-                    ps.setString(1, range.getWorld().getName());
+                    ps.setString(1, range.getWorldName());
                     ps.setInt(2, range.getXLow());
                     ps.setInt(3, range.getXHigh());
                     ps.setInt(4, range.getZLow());
@@ -100,7 +100,7 @@ public class DatabaseQueue extends SQLite {
     /** Atomically reserves a queue row. Only one concurrent caller can succeed. */
     public boolean claim(int databaseId) {
         try {
-            return SQLiteExecutor.EXECUTOR.submit(() -> {
+            return SQLiteExecutor.executor().submit(() -> {
                 String sql = "DELETE FROM " + tables.get(0) + " WHERE " + COLUMNS.ID.name + " = ?";
                 try (Connection connection = getSQLConnection()) {
                     if (connection == null) {
@@ -123,16 +123,16 @@ public class DatabaseQueue extends SQLite {
     }
 
     //Set a queue to save
-    public QueueData addQueue(Location loc) {
+    public QueueData addQueue(Location loc, String worldName, int blockX, int blockZ) {
         try {
-            return SQLiteExecutor.EXECUTOR.submit(() -> {
+            return SQLiteExecutor.executor().submit(() -> {
                 String sql = "INSERT INTO " + tables.get(0) + " ("
                         + COLUMNS.X.name + ", "
                         + COLUMNS.Z.name + ", "
                         + COLUMNS.WORLD.name + ", "
                         + COLUMNS.GENERATED.name + ") VALUES(?, ?, ?, ?)";
                 List<Object> params = List.of(
-                        loc.getBlockX(), loc.getBlockZ(), loc.getWorld().getName(), System.currentTimeMillis());
+                        blockX, blockZ, worldName, System.currentTimeMillis());
                 int databaseId = createQueue(sql, params);
                 return databaseId >= 0 ? new QueueData(loc, System.currentTimeMillis(), databaseId) : null;
             }).get();
@@ -168,14 +168,14 @@ public class DatabaseQueue extends SQLite {
         return id;
     }
 
-    public boolean removeLocation(Location loc) {
+    public boolean removeLocation(String worldName, int blockX, int blockZ) {
         try {
-            return SQLiteExecutor.EXECUTOR.submit(() -> {
+            return SQLiteExecutor.executor().submit(() -> {
                 String sql = "DELETE FROM " + tables.get(0) + " WHERE "
                         + COLUMNS.X.name + " = ? AND "
                         + COLUMNS.Z.name + " = ? AND "
                         + COLUMNS.WORLD.name + " = ?";
-                List<Object> params = List.of(loc.getBlockX(), loc.getBlockZ(), loc.getWorld().getName());
+                List<Object> params = List.of(blockX, blockZ, worldName);
                 return sqlUpdate(sql, params);
             }).get();
         } catch (Exception ex) {
@@ -190,6 +190,7 @@ public class DatabaseQueue extends SQLite {
         int xLow, xHigh;
         int zLow, zHigh;
         World world;
+        String worldName;
 
         public QueueRangeData(RTPWorld rtpWorld) {
             this.xLow = rtpWorld.getCenterX() - rtpWorld.getMaxRadius();
@@ -197,6 +198,7 @@ public class DatabaseQueue extends SQLite {
             this.zLow = rtpWorld.getCenterZ() - rtpWorld.getMaxRadius();
             this.zHigh = rtpWorld.getCenterZ() + rtpWorld.getMaxRadius();
             this.world = rtpWorld.getWorld();
+            this.worldName = world.getName();
         }
     }
 }

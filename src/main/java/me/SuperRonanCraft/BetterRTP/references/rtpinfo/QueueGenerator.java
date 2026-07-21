@@ -5,6 +5,7 @@ import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.player.commands.RTP_SETUP_TYPE;
 import me.SuperRonanCraft.BetterRTP.player.rtp.RTP;
 import me.SuperRonanCraft.BetterRTP.references.database.DatabaseHandler;
+import me.SuperRonanCraft.BetterRTP.references.database.DatabaseQueue;
 import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.RTPWorld;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldCustom;
@@ -17,6 +18,10 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
@@ -31,53 +36,58 @@ public class QueueGenerator {
     private final AtomicBoolean stopped = new AtomicBoolean(true);
     private final AtomicBoolean rerunRequested = new AtomicBoolean();
     private final AtomicLong generation = new AtomicLong();
-    private volatile RTPWorld pendingWorld;
+    private volatile QueueRequest pendingRequest;
     private volatile ScheduledTask task;
+    private final Set<CompletableFuture<?>> pendingChunks = ConcurrentHashMap.newKeySet();
 
     public void unload() {
         generation.incrementAndGet();
         stopped.set(true);
         rerunRequested.set(false);
-        pendingWorld = null;
+        pendingRequest = null;
         ScheduledTask currentTask = task;
         task = null;
         if (currentTask != null) {
             currentTask.cancel();
         }
+        pendingChunks.forEach(future -> future.cancel(true));
+        pendingChunks.clear();
         running.set(false);
     }
 
     public void load() {
         unload();
         stopped.set(false);
-        generate(null);
+        generate(null, null);
     }
 
-    void generate(@Nullable RTPWorld rtpWorld) {
+    void generate(@Nullable RTPWorld rtpWorld, @Nullable DatabaseQueue.QueueRangeData range) {
         if (!QueueHandler.isEnabled() || stopped.get()) {
             return;
         }
         if (!running.compareAndSet(false, true)) {
-            pendingWorld = rtpWorld;
+            pendingRequest = rtpWorld == null ? null : new QueueRequest(rtpWorld, range);
             rerunRequested.set(true);
             return;
         }
-        waitForDatabase(rtpWorld, generation.get());
+        waitForDatabase(rtpWorld, range, generation.get());
     }
 
-    private void waitForDatabase(@Nullable RTPWorld requestedWorld, long runId) {
+    private void waitForDatabase(@Nullable RTPWorld requestedWorld,
+                                 @Nullable DatabaseQueue.QueueRangeData range, long runId) {
         task = AsyncHandler.asyncLater(() -> {
             if (isObsolete(runId)) {
                 return;
             }
             if (!DatabaseHandler.getQueue().isLoaded()) {
-                waitForDatabase(requestedWorld, runId);
+                waitForDatabase(requestedWorld, range, runId);
                 return;
             }
 
             BetterRTP.debug("Checking RTP location queues...");
             if (requestedWorld != null) {
-                processTargets(List.of(new QueueTarget(requestedWorld, targetId(requestedWorld))), 0, 0, runId);
+                processTargets(List.of(new QueueTarget(
+                        requestedWorld, range, targetId(requestedWorld, range))), 0, 0, runId);
             } else {
                 collectTargets(runId);
             }
@@ -97,8 +107,9 @@ public class QueueGenerator {
             for (World world : Bukkit.getWorlds()) {
                 if (!rtp.getDisabledWorlds().contains(world.getName())
                         && !rtp.getRTPcustomWorld().containsKey(world.getName())) {
-                    targets.add(new QueueTarget(
-                            new WorldCustom(world, rtp.getRTPdefaultWorld()), "default_" + world.getName()));
+                    RTPWorld targetWorld = new WorldCustom(world, rtp.getRTPdefaultWorld());
+                    targets.add(new QueueTarget(targetWorld, QueueHandler.snapshot(targetWorld),
+                            "default_" + world.getName()));
                 }
             }
             AsyncHandler.async(() -> processTargets(List.copyOf(targets), 0, 0, runId));
@@ -109,7 +120,8 @@ public class QueueGenerator {
                                       Map<String, RTPWorld> worlds) {
         for (Map.Entry<String, RTPWorld> entry : worlds.entrySet()) {
             String prefix = type == RTP_SETUP_TYPE.LOCATION ? "location_" : "custom_";
-            targets.add(new QueueTarget(entry.getValue(), prefix + entry.getKey()));
+            targets.add(new QueueTarget(
+                    entry.getValue(), QueueHandler.snapshot(entry.getValue()), prefix + entry.getKey()));
         }
     }
 
@@ -125,7 +137,7 @@ public class QueueGenerator {
 
         QueueTarget target = targets.get(index);
         try {
-            int available = QueueHandler.getApplicableAsync(target.world()).size();
+            int available = QueueHandler.getApplicableAsync(target.world(), target.range()).size();
             if (available >= QUEUE_MIN) {
                 processTargets(targets, index + 1, 0, runId);
                 return;
@@ -157,7 +169,14 @@ public class QueueGenerator {
                 return;
             }
             try {
-                candidate.getWorld().getChunkAtAsync(candidate).whenComplete((chunk, throwable) -> {
+                CompletableFuture<?> chunkFuture = candidate.getWorld().getChunkAtAsync(candidate)
+                        .orTimeout(BetterRTP.getInstance().getSettings().getChunkLoadTimeoutSeconds(), TimeUnit.SECONDS);
+                pendingChunks.add(chunkFuture);
+                chunkFuture.whenComplete((chunk, throwable) -> {
+                    pendingChunks.remove(chunkFuture);
+                    if (isObsolete(runId)) {
+                        return;
+                    }
                     if (throwable != null) {
                         BetterRTP.getInstance().getLogger().log(Level.WARNING,
                                 "Unable to load a queued RTP chunk at " + candidate, throwable);
@@ -197,12 +216,16 @@ public class QueueGenerator {
             return;
         }
 
+        String worldName = safeLocation.getWorld().getName();
+        int blockX = safeLocation.getBlockX();
+        int blockZ = safeLocation.getBlockZ();
         AsyncHandler.async(() -> {
-            QueueData data = DatabaseHandler.getQueue().addQueue(safeLocation);
+            QueueData data = DatabaseHandler.getQueue().addQueue(
+                    safeLocation, worldName, blockX, blockZ);
             if (data != null) {
                 BetterRTP.debug("Queue position generated: id=" + target.id()
                         + ", databaseId=" + data.getDatabaseId()
-                        + ", location=" + data.getLocation());
+                        + ", world=" + worldName + ", x=" + blockX + ", z=" + blockZ);
             }
             processTargets(targets, index, attempts + 1, runId);
         });
@@ -219,9 +242,9 @@ public class QueueGenerator {
         task = null;
         running.set(false);
         if (!stopped.get() && rerunRequested.compareAndSet(true, false)) {
-            RTPWorld requestedWorld = pendingWorld;
-            pendingWorld = null;
-            generate(requestedWorld);
+            QueueRequest request = pendingRequest;
+            pendingRequest = null;
+            generate(request == null ? null : request.world(), request == null ? null : request.range());
         }
     }
 
@@ -229,10 +252,13 @@ public class QueueGenerator {
         return stopped.get() || generation.get() != runId;
     }
 
-    private static String targetId(RTPWorld world) {
-        return "rtp_" + (world.getID() != null ? world.getID() : world.getWorld().getName());
+    private static String targetId(RTPWorld world, DatabaseQueue.QueueRangeData range) {
+        return "rtp_" + (world.getID() != null ? world.getID() : range.getWorldName());
     }
 
-    private record QueueTarget(RTPWorld world, String id) {
+    private record QueueTarget(RTPWorld world, DatabaseQueue.QueueRangeData range, String id) {
+    }
+
+    private record QueueRequest(RTPWorld world, DatabaseQueue.QueueRangeData range) {
     }
 }

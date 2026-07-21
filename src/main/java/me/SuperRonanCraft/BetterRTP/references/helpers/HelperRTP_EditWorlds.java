@@ -6,10 +6,13 @@ import me.SuperRonanCraft.BetterRTP.references.file.FileOther;
 import me.SuperRonanCraft.BetterRTP.references.messages.Message_RTP;
 import me.SuperRonanCraft.BetterRTP.references.messages.MessagesCore;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WORLD_TYPE;
+import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -74,13 +77,8 @@ public class HelperRTP_EditWorlds {
 
         config.set(path, map);
 
-        try {
-            config.save(file.getFile());
-            return true;
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return false;
+        saveAsync(file, config);
+        return true;
     }
 
     public static void editPermissionGroup(CommandSender sendi, CmdEdit.RTP_CMD_EDIT_SUB cmd, String group, String world, String val) {
@@ -152,12 +150,8 @@ public class HelperRTP_EditWorlds {
 
         config.set(path, map);
 
-        try {
-            config.save(file.getFile());
-            BetterRTP.getInstance().getRTP().loadPermissionGroups();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        saveAsync(file, config);
+        BetterRTP.getInstance().getRTP().loadPermissionGroups();
     }
 
     public static void editDefault(CommandSender sendi, CmdEdit.RTP_CMD_EDIT_SUB cmd, String val) {
@@ -180,16 +174,12 @@ public class HelperRTP_EditWorlds {
 
         config.set("Default." + cmd.get(), value);
 
-        try {
-            config.save(file.getFile());
-            BetterRTP.getInstance().getRTP().loadWorlds();
-            Message_RTP.sms(sendi,
-                    MessagesCore.EDIT_SET.get(sendi, null)
-                            .replace("%type%", cmd.get())
-                            .replace("%value%", val));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        saveAsync(file, config);
+        BetterRTP.getInstance().getRTP().loadWorlds();
+        Message_RTP.sms(sendi,
+                MessagesCore.EDIT_SET.get(sendi, null)
+                        .replace("%type%", cmd.get())
+                        .replace("%value%", val));
     }
 
     public static void editWorldtype(CommandSender sendi, String world, String val) {
@@ -221,16 +211,12 @@ public class HelperRTP_EditWorlds {
         world_map.add(newIndex);
         config.set("WorldType", world_map);
 
-        try {
-            config.save(file.getFile());
-            BetterRTP.getInstance().getRTP().load();
-            Message_RTP.sms(sendi,
-                    MessagesCore.EDIT_SET.get(sendi, null)
-                            .replace("%type%", CmdEdit.RTP_CMD_EDIT.WORLD_TYPE.name())
-                            .replace("%value%", val));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        saveAsync(file, config);
+        BetterRTP.getInstance().getRTP().load();
+        Message_RTP.sms(sendi,
+                MessagesCore.EDIT_SET.get(sendi, null)
+                        .replace("%type%", CmdEdit.RTP_CMD_EDIT.WORLD_TYPE.name())
+                        .replace("%value%", val));
     }
 
     public static void editOverride(CommandSender sendi, String world, String val) {
@@ -257,16 +243,12 @@ public class HelperRTP_EditWorlds {
         }
         config.set("Overrides", world_map);
 
-        try {
-            config.save(file.getFile());
-            BetterRTP.getInstance().getRTP().load();
-            Message_RTP.sms(sendi,
-                    MessagesCore.EDIT_SET.get(sendi, null)
-                            .replace("%type%", CmdEdit.RTP_CMD_EDIT.OVERRIDE.name())
-                            .replace("%value%", val));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        saveAsync(file, config);
+        BetterRTP.getInstance().getRTP().load();
+        Message_RTP.sms(sendi,
+                MessagesCore.EDIT_SET.get(sendi, null)
+                        .replace("%type%", CmdEdit.RTP_CMD_EDIT.OVERRIDE.name())
+                        .replace("%value%", val));
     }
 
     public static void editBlacklisted(CommandSender sendi, String block, boolean add) {
@@ -290,16 +272,12 @@ public class HelperRTP_EditWorlds {
         }
         config.set("BlacklistedBlocks", world_map);
 
-        try {
-            config.save(file.getFile());
-            BetterRTP.getInstance().getRTP().load();
-            Message_RTP.sms(sendi,
-                    MessagesCore.EDIT_SET.get(sendi, null)
-                            .replace("%type%", CmdEdit.RTP_CMD_EDIT.BLACKLISTEDBLOCKS.name())
-                            .replace("%value%", block));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        saveAsync(file, config);
+        BetterRTP.getInstance().getRTP().load();
+        Message_RTP.sms(sendi,
+                MessagesCore.EDIT_SET.get(sendi, null)
+                        .replace("%type%", CmdEdit.RTP_CMD_EDIT.BLACKLISTEDBLOCKS.name())
+                        .replace("%value%", block));
     }
 
     private static List<Map<String, Object>> mutableMapList(List<Map<?, ?>> source) {
@@ -312,6 +290,19 @@ public class HelperRTP_EditWorlds {
         Map<String, Object> result = new LinkedHashMap<>();
         source.forEach((key, value) -> result.put(String.valueOf(key), value));
         return result;
+    }
+
+    private static void saveAsync(FileOther.FILETYPE file, YamlConfiguration config) {
+        String contents = config.saveToString();
+        java.util.logging.Logger logger = BetterRTP.getInstance().getLogger();
+        AsyncHandler.async(() -> {
+            try {
+                Files.writeString(file.getFile().toPath(), contents, StandardCharsets.UTF_8);
+            } catch (IOException exception) {
+                logger.log(
+                        java.util.logging.Level.SEVERE, "Unable to save " + file.fileName(), exception);
+            }
+        });
     }
 
 }

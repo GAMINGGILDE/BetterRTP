@@ -10,12 +10,13 @@ public class WorldLoad {
     ScheduledTask loader;
 
     void load(WorldLoadEvent e) {
+        String worldName = e.getWorld().getName();
         //BetterRTP.getInstance().getLogger().info("NEW WORLD!");
         if (loader != null)
             loader.cancel();
         loader = AsyncHandler.syncLater(() -> {
-            BetterRTP.debug("New world `" + e.getWorld().getName() + "` detected! Reloaded Databases!");
-            BetterRTP.getInstance().getDatabaseHandler().load();
+            BetterRTP.debug("New world `" + worldName + "` detected! Reloaded Databases!");
+            BetterRTP.getInstance().getDatabaseHandler().refreshWorlds();
         }, 20L * 5);
     }
 }

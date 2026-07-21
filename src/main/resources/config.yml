@@ -36,6 +36,9 @@ Settings:
     CancelOnMove: true
   Queue:
     Enabled: true #Allows betterrtp to automatically queue up safe rtp locations prior to players executing `/rtp`
+  Timeouts:
+    ChunkLoadSeconds: 15 #Abort a stalled asynchronous chunk load
+    TeleportSeconds: 15 #Abort a stalled asynchronous teleport and refund reserved costs
   DisableUpdater: false
   Logger:
     Enabled: true #Log all things rtp related to the log.log file

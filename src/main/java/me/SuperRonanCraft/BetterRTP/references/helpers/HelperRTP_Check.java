@@ -37,7 +37,7 @@ public class HelperRTP_Check {
     }
 
     private static boolean isRTPing(Player player) {
-        return getPl().getPInfo().isTeleporting(player);
+        return getPl().getRTP().getSessions().isActive(player);
     }
 
     public static boolean isCoolingDown(Player player, WorldPlayer pWorld) {

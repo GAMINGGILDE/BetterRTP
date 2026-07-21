@@ -3,11 +3,13 @@ package me.SuperRonanCraft.BetterRTP.references.file;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
+import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -111,10 +113,15 @@ public interface FileData {
     }
 
     default void save() {
-        try {
-            getConfig().save(getFile());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        String contents = getConfig().saveToString();
+        java.util.logging.Logger logger = plugin().getLogger();
+        AsyncHandler.async(() -> {
+            try {
+                java.nio.file.Files.writeString(getFile().toPath(), contents, StandardCharsets.UTF_8);
+            } catch (IOException exception) {
+                logger.log(
+                        java.util.logging.Level.SEVERE, "Unable to save " + fileName(), exception);
+            }
+        });
     }
 }

@@ -14,7 +14,6 @@ import org.bukkit.plugin.PluginManager;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 public class QueueHandler implements Listener { //Randomly queues up some safe locations
 
@@ -43,10 +42,10 @@ public class QueueHandler implements Listener { //Randomly queues up some safe l
         remove(e.getLocation());
     }
 
-    public static QueueData getRandomAsync(RTPWorld rtpWorld) {
-        List<QueueData> queueData = getApplicableAsync(rtpWorld);
+    public static QueueData getRandomAsync(RTPWorld rtpWorld, DatabaseQueue.QueueRangeData range) {
+        List<QueueData> queueData = getApplicableAsync(rtpWorld, range);
         if (queueData.size() <= QueueGenerator.QUEUE_MIN) {
-            BetterRTP.getInstance().getQueue().generator.generate(rtpWorld);
+            BetterRTP.getInstance().getQueue().generator.generate(rtpWorld, range);
         }
         for (QueueData candidate : queueData) {
             if (DatabaseHandler.getQueue().claim(candidate.getDatabaseId())) {
@@ -56,14 +55,13 @@ public class QueueHandler implements Listener { //Randomly queues up some safe l
         return null;
     }
 
-    public static List<QueueData> getApplicableAsync(RTPWorld rtpWorld) {
+    public static List<QueueData> getApplicableAsync(
+            RTPWorld rtpWorld, DatabaseQueue.QueueRangeData range) {
         List<QueueData> available = new ArrayList<>();
         //Is Enabled??
         if (!isEnabled()) return available;
-        List<QueueData> queueData = DatabaseHandler.getQueue().getInRange(new DatabaseQueue.QueueRangeData(rtpWorld));
+        List<QueueData> queueData = DatabaseHandler.getQueue().getInRange(range);
         for (QueueData data : queueData) {
-            if (!Objects.equals(data.getLocation().getWorld().getName(), rtpWorld.getWorld().getName()))
-                continue;
             switch (rtpWorld.getShape()) {
                 case CIRCLE:
                     if (isInCircle(data.location, rtpWorld))
@@ -83,11 +81,14 @@ public class QueueHandler implements Listener { //Randomly queues up some safe l
 
     public static void remove(Location loc) {
         if (!isEnabled()) return;
+        String worldName = loc.getWorld().getName();
+        int blockX = loc.getBlockX();
+        int blockZ = loc.getBlockZ();
         AsyncHandler.async(() -> {
             //Delete all queue data async
-            if (DatabaseHandler.getQueue().removeLocation(loc)) {
+            if (DatabaseHandler.getQueue().removeLocation(worldName, blockX, blockZ)) {
                 //BetterRTP.getInstance().getQueue().queueList.remove(data);
-                BetterRTP.debug("-Removed a queue " + loc);
+                BetterRTP.debug("-Removed a queue world=" + worldName + ", x=" + blockX + ", z=" + blockZ);
             }
         });
     }
@@ -98,6 +99,10 @@ public class QueueHandler implements Listener { //Randomly queues up some safe l
 
     public static boolean isInSquare(Location loc, RTPWorld rtpWorld) {
         return area(rtpWorld, RTP_SHAPE.SQUARE).contains(loc.getBlockX(), loc.getBlockZ());
+    }
+
+    public static DatabaseQueue.QueueRangeData snapshot(RTPWorld world) {
+        return new DatabaseQueue.QueueRangeData(world);
     }
 
     private static RtpArea area(RTPWorld world, RTP_SHAPE shape) {
