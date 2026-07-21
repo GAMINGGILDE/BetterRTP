@@ -32,11 +32,8 @@ import java.util.logging.Level;
  */
 public class RTPPlayer {
 
-    @Getter private final Player player;
-    @Getter private final UUID playerId;
     private final RTP settings;
     @Getter private final WorldPlayer worldPlayer;
-    @Getter private final RTP_TYPE type;
     @Getter private final RtpRequest request;
     private final AtomicInteger attempts = new AtomicInteger();
     private final AtomicBoolean finished = new AtomicBoolean();
@@ -47,23 +44,32 @@ public class RTPPlayer {
     private final List<String> blockedBlocks;
     private final RtpCandidateFinder candidateFinder;
 
-    RTPPlayer(Player player, RTP settings, WorldPlayer worldPlayer, RTP_TYPE type) {
-        this(player, settings, worldPlayer, type, new RtpCandidateFinder());
+    RTPPlayer(RTP settings, WorldPlayer worldPlayer) {
+        this(settings, RtpRequest.from(worldPlayer), worldPlayer, new RtpCandidateFinder());
     }
 
     RTPPlayer(
-            Player player, RTP settings, WorldPlayer worldPlayer, RTP_TYPE type,
+            RTP settings, RtpRequest request, WorldPlayer worldPlayer,
             RtpCandidateFinder candidateFinder) {
-        this.player = player;
-        this.playerId = player.getUniqueId();
         this.settings = settings;
         this.worldPlayer = worldPlayer;
-        this.type = type;
-        this.request = worldPlayer == null ? null : RtpRequest.from(worldPlayer);
-        this.queueRange = request == null ? null : QueueHandler.snapshot(request.world());
+        this.request = request;
+        this.queueRange = QueueHandler.snapshot(request.world());
         this.blockedBlocks = settings.getBlockList() == null
                 ? List.of() : List.copyOf(settings.getBlockList());
         this.candidateFinder = candidateFinder;
+    }
+
+    public Player getPlayer() {
+        return request.player();
+    }
+
+    public UUID getPlayerId() {
+        return request.playerId();
+    }
+
+    public RTP_TYPE getType() {
+        return request.type();
     }
 
     public int getAttempts() {
@@ -156,7 +162,7 @@ public class RTPPlayer {
             }
 
             safeLocation.add(0.5, 0, 0.5);
-            AsyncHandler.syncAtEntity(player, () -> completeTeleport(sender, safeLocation));
+            AsyncHandler.syncAtEntity(getPlayer(), () -> completeTeleport(sender, safeLocation));
         } catch (Throwable throwable) {
             settings.logger().log(Level.WARNING,
                     "Unable to validate an RTP candidate at " + candidate, throwable);
@@ -169,6 +175,7 @@ public class RTPPlayer {
             return;
         }
 
+        Player player = getPlayer();
         DepEconomy.Reservation reservation = settings.economy().reserve(request);
         if (!reservation.successful()) {
             notifyReservationFailure(sender, reservation.failure());
@@ -199,15 +206,15 @@ public class RTPPlayer {
         MessagesCore message = failure == DepEconomy.Failure.HUNGER
                 ? MessagesCore.FAILED_HUNGER
                 : MessagesCore.FAILED_PRICE;
-        message.send(player, worldPlayer);
-        if (sender != player) {
+        message.send(getPlayer(), worldPlayer);
+        if (sender != getPlayer()) {
             AsyncHandler.syncAtSender(sender, () -> message.send(sender, worldPlayer));
         }
     }
 
     private void retry(CommandSender sender) {
         if (isActive()) {
-            AsyncHandler.syncAtEntity(player, () -> randomlyTeleport(sender));
+            AsyncHandler.syncAtEntity(getPlayer(), () -> randomlyTeleport(sender));
         }
     }
 
@@ -216,7 +223,7 @@ public class RTPPlayer {
             return;
         }
         try {
-            settings.getTeleport().failedTeleport(player, sender);
+            settings.getTeleport().failedTeleport(getPlayer(), sender);
             Bukkit.getPluginManager().callEvent(new RTP_FailedEvent(this));
         } finally {
             closeSession();

@@ -17,6 +17,7 @@ import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.player.commands.types.CmdLocation;
 import me.SuperRonanCraft.BetterRTP.player.rtp.RTP;
 import me.SuperRonanCraft.BetterRTP.player.rtp.RTPSetupInformation;
+import me.SuperRonanCraft.BetterRTP.player.rtp.RtpSetupRequest;
 import me.SuperRonanCraft.BetterRTP.player.rtp.RTP_ERROR_REQUEST_REASON;
 import me.SuperRonanCraft.BetterRTP.player.rtp.RTP_PlayerInfo;
 import me.SuperRonanCraft.BetterRTP.player.rtp.RTP_TYPE;
@@ -26,6 +27,8 @@ import me.SuperRonanCraft.BetterRTP.references.messages.Message_RTP;
 import me.SuperRonanCraft.BetterRTP.references.messages.placeholder.Placeholders;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.PermissionGroup;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.RTPWorld;
+import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.ResolvedRtpWorld;
+import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.RtpWorldResolver;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WORLD_TYPE;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldLocation;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPermissionGroup;
@@ -144,57 +147,61 @@ public class HelperRTP {
     }
 
     public static WorldPlayer getPlayerWorld(RTPSetupInformation setup_info) {
-        WorldPlayer pWorld = new WorldPlayer(setup_info);
-
+        RtpSetupRequest setupRequest = RtpSetupRequest.from(setup_info);
         //Random Location
-        if (setup_info.getLocation() == null
+        if (setupRequest.location() == null
                 && BetterRTP.getInstance().getSettings().isLocationEnabled()
                 && BetterRTP.getInstance().getSettings().isUseLocationIfAvailable()) {
-            WorldLocation worldLocation = HelperRTP.getRandomLocation(setup_info.getSender(), setup_info.getWorld());
+            WorldLocation worldLocation = HelperRTP.getRandomLocation(
+                    setupRequest.sender(), setupRequest.world());
             if (worldLocation != null) {
-                setup_info.setLocation(worldLocation);
-                setup_info.setWorld(worldLocation.getWorld());
+                setupRequest = setupRequest.withLocation(worldLocation);
             }
-            if (setup_info.getLocation() == null && BetterRTP.getInstance().getSettings().isDebug())
+            if (setupRequest.location() == null && BetterRTP.getInstance().getSettings().isDebug())
                 WarningHandler.warn(WarningHandler.WARNING.USELOCATION_ENABLED_NO_LOCATION_AVAILABLE,
                         "This is not an error! UseLocationIfAvailable is set to `true`, but no location was found for "
-                                + setup_info.getSender().getName() + "! Using world defaults! (Maybe they dont have permission?)");
+                                + setupRequest.sender().getName() + "! Using world defaults! (Maybe they dont have permission?)");
         }
-        //Location
-        if (setup_info.getLocation() != null) {
-            String setup_name = null;
+
+        RTPWorld configuredWorld;
+        WorldPermissionGroup permissionGroup = null;
+        String setupName = null;
+        List<String> biomeOverride = setupRequest.biomes();
+
+        // Location
+        if (setupRequest.location() != null) {
             for (Map.Entry<String, RTPWorld> location_set : BetterRTP.getInstance().getRTP().getRTPworldLocations().entrySet()) {
                 RTPWorld location = location_set.getValue();
-                if (location == setup_info.getLocation()) {
-                    setup_name = location_set.getKey();
+                if (location == setupRequest.location()) {
+                    setupName = location_set.getKey();
                     break;
                 }
             }
-            pWorld.setup(setup_name, setup_info.getLocation(), setup_info.getLocation().getBiomes());
-            //BetterRTP.getInstance().getLogger().info("Location x: " + setup_info.getLocation().getCenterX());
+            configuredWorld = setupRequest.location();
+            biomeOverride = setupRequest.location().getBiomes();
+        } else {
+            permissionGroup = getGroup(setupRequest.player(), setupRequest.world());
+            if (permissionGroup != null) {
+                configuredWorld = permissionGroup;
+            }
+            else if (BetterRTP.getInstance().getRTP().getRTPcustomWorld().containsKey(setupRequest.world().getName())) {
+                configuredWorld = BetterRTP.getInstance().getRTP().getRTPcustomWorld()
+                        .get(setupRequest.world().getName());
+            }
+            else {
+                configuredWorld = BetterRTP.getInstance().getRTP().getRTPdefaultWorld();
+            }
         }
 
-        //Setup world (if no location pre-setup)
-        if (!pWorld.isSetup()) {
-            WorldPermissionGroup group = getGroup(pWorld);
-
-            //Permission Group
-            if (group != null) {
-                pWorld.setup(null, group, setup_info.getBiomes());
-                pWorld.config = group;
-            }
-            //Custom World
-            else if (BetterRTP.getInstance().getRTP().getRTPcustomWorld().containsKey(setup_info.getWorld().getName())) {
-                RTPWorld cWorld = BetterRTP.getInstance().getRTP().getRTPcustomWorld().get(pWorld.getWorld().getName());
-                pWorld.setup(null, cWorld, setup_info.getBiomes());
-            }
-            //Default World
-            else
-                pWorld.setup(null, BetterRTP.getInstance().getRTP().getRTPdefaultWorld(), setup_info.getBiomes());
-        }
-        //World type
-        pWorld.setWorldtype(getWorldType(pWorld.getWorld()));
-        return pWorld;
+        ResolvedRtpWorld resolvedWorld = RtpWorldResolver.resolve(
+                configuredWorld,
+                setupRequest.world(),
+                biomeOverride,
+                BetterRTP.getInstance().getRTP().getRTPdefaultWorld().getMinRadius(),
+                getWorldType(setupRequest.world()),
+                setupName,
+                permissionGroup);
+        return new WorldPlayer(setupRequest, resolvedWorld);
     }
 
     public static WORLD_TYPE getWorldType(World world) {
@@ -213,12 +220,16 @@ public class HelperRTP {
     }
 
     public static WorldPermissionGroup getGroup(WorldPlayer pWorld) {
+        return getGroup(pWorld.getPlayer(), pWorld.getWorld());
+    }
+
+    public static WorldPermissionGroup getGroup(@Nullable Player player, World world) {
         WorldPermissionGroup group = null;
-        if (pWorld.getPlayer() != null)
+        if (player != null)
             for (Map.Entry<String, PermissionGroup> permissionGroup : BetterRTP.getInstance().getRTP().getPermissionGroups().entrySet()) {
                 for (Map.Entry<String, WorldPermissionGroup> worldPermission : permissionGroup.getValue().getWorlds().entrySet()) {
-                    if (pWorld.getWorld().equals(worldPermission.getValue().getWorld())) {
-                        if (PermissionCheck.getPermissionGroup(pWorld.getPlayer(), permissionGroup.getKey())) {
+                    if (world.equals(worldPermission.getValue().getWorld())) {
+                        if (PermissionCheck.getPermissionGroup(player, permissionGroup.getKey())) {
                             if (group != null) {
                                 if (group.getPriority() < worldPermission.getValue().getPriority())
                                     continue;

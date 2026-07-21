@@ -108,13 +108,13 @@ public class RTP {
         Bukkit.getPluginManager().callEvent(setup);
         if (setup.isCancelled())
             return;
-        rtp(pWorld.getSendi(), pWorld, pWorld.getRtp_type());
+        rtp(pWorld.getSendi(), pWorld);
     }
 
-    private void rtp(CommandSender sendi, WorldPlayer pWorld, RTP_TYPE type) {
+    private void rtp(CommandSender sendi, WorldPlayer pWorld) {
         //Cooldown
         Player p = pWorld.getPlayer();
-        RTPPlayer rtpPlayer = new RTPPlayer(p, this, pWorld, type);
+        RTPPlayer rtpPlayer = new RTPPlayer(this, pWorld);
         if (!sessions.register(rtpPlayer)) {
             return;
         }

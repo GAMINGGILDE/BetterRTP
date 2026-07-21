@@ -4,6 +4,7 @@ import org.bukkit.entity.Player;
 
 import lombok.Getter;
 import me.SuperRonanCraft.BetterRTP.player.rtp.RTPPlayer;
+import me.SuperRonanCraft.BetterRTP.player.rtp.RtpRequest;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.RTPWorld;
 
 //Called when an rtp is finding a valid location
@@ -12,10 +13,12 @@ import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.RTPWorld;
     Player p;
     RTPWorld world;
     int attempts;
+    RtpRequest request;
 
     public RTP_FailedEvent(RTPPlayer rtpPlayer) {
         this.p = rtpPlayer.getPlayer();
         this.world = rtpPlayer.getWorldPlayer();
         this.attempts = rtpPlayer.getAttempts();
+        this.request = rtpPlayer.getRequest();
     }
 }

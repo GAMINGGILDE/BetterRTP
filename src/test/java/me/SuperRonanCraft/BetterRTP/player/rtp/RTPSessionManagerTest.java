@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Proxy;
 import java.util.UUID;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -71,7 +72,14 @@ class RTPSessionManagerTest {
                     }
                     return null;
                 });
-        return new RTPPlayer(player, rtp, null, RTP_TYPE.COMMAND);
+        RtpRequest request = new RtpRequest(
+                player,
+                playerId,
+                player,
+                RTP_TYPE.COMMAND,
+                RtpWorldSnapshotTest.snapshot(List.of()),
+                new RtpPlayerOptions(true, true, true, true, true));
+        return new RTPPlayer(rtp, request, null, new RtpCandidateFinder());
     }
 
     private static Object primitiveDefault(Class<?> type) {

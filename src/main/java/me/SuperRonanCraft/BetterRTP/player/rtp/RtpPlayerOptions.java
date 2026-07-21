@@ -19,4 +19,9 @@ public record RtpPlayerOptions(
                 source.isTakeMoney(),
                 source.isTakeHunger());
     }
+
+    public RTP_PlayerInfo toLegacyPlayerInfo() {
+        return new RTP_PlayerInfo(
+                applyDelay, applyCooldown, checkCooldown, takeMoney, takeHunger);
+    }
 }

@@ -197,7 +197,8 @@ public class CmdInfo implements RTPCommand, RTPCommandHelpable {
             if (_rtpworld == null)
                 _rtpworld = HelperRTP.getPlayerWorld(new RTPSetupInformation(world, player != null ? player : sendi, player, player != null));
             WorldDefault worldDefault = BetterRTP.getInstance().getRTP().getRTPdefaultWorld();
-            info.add("&7- &eSetup Type&7: " + _rtpworld.setup_type.name() + getInfo(_rtpworld, worldDefault, "setup"));
+            info.add("&7- &eSetup Type&7: " + _rtpworld.getSetupType().name()
+                    + getInfo(_rtpworld, worldDefault, "setup"));
             info.add("&7- &6Use World Border&7: " + (_rtpworld.getUseWorldborder() ? _true : _false));
             info.add("&7- &eWorld Type&7: &f" + _rtpworld.getWorldtype().name());
             info.add("&7- &6Center X&7: &f" + _rtpworld.getCenterX() + getInfo(_rtpworld, worldDefault, "centerx"));
@@ -235,7 +236,8 @@ public class CmdInfo implements RTPCommand, RTPCommandHelpable {
             case "shape":
                 return worldPlayer.getShape() == worldDefault.getShape() ? " &8(default)" : "";
             case "setup":
-                return worldPlayer.setup_type == RTP_SETUP_TYPE.LOCATION ? " &7(" + worldPlayer.setup_name + ")" : "";
+                return worldPlayer.getSetupType() == RTP_SETUP_TYPE.LOCATION
+                        ? " &7(" + worldPlayer.getSetupName() + ")" : "";
             case "cooldown":
                 return worldPlayer.getPlayer() != null ? PermissionNode.BYPASS_COOLDOWN.check(worldPlayer.getPlayer()) ? " &8(bypassing)" : "" : " &cN/A";
         }

@@ -2,6 +2,7 @@ package me.SuperRonanCraft.BetterRTP.player.rtp;
 
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WORLD_TYPE;
 import org.bukkit.World;
+import org.bukkit.entity.Player;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Proxy;
@@ -10,6 +11,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RtpWorldSnapshotTest {
 
@@ -36,6 +38,22 @@ class RtpWorldSnapshotTest {
         assertEquals(new RtpPlayerOptions(true, true, true, true, true), options);
     }
 
+    @Test
+    void setupRequestDoesNotRetainMutableSetupCollectionsOrOptions() {
+        List<String> biomes = new ArrayList<>(List.of("PLAINS"));
+        Player player = player();
+        RTPSetupInformation source = new RTPSetupInformation(
+                world(), player, player, true, biomes, true,
+                RTP_TYPE.COMMAND, null);
+
+        RtpSetupRequest request = RtpSetupRequest.from(source);
+        biomes.add("DESERT");
+        source.getPlayerInfo().setApplyDelay(false);
+
+        assertEquals(List.of("PLAINS"), request.biomes());
+        assertTrue(request.playerOptions().applyDelay());
+    }
+
     static RtpWorldSnapshot snapshot(List<String> biomes) {
         return new RtpWorldSnapshot(
                 false, 10, -20, 1_000, 25, 50, biomes, world(),
@@ -48,6 +66,18 @@ class RtpWorldSnapshotTest {
                 new Class<?>[]{World.class},
                 (proxy, method, arguments) -> {
                     if (method.getName().equals("getName")) return "world";
+                    if (method.getReturnType().isPrimitive()) return primitiveDefault(method.getReturnType());
+                    return null;
+                });
+    }
+
+    private static Player player() {
+        return (Player) Proxy.newProxyInstance(
+                Player.class.getClassLoader(),
+                new Class<?>[]{Player.class},
+                (proxy, method, arguments) -> {
+                    if (method.getName().equals("getUniqueId")) return java.util.UUID.randomUUID();
+                    if (method.getName().equals("getName")) return "player";
                     if (method.getReturnType().isPrimitive()) return primitiveDefault(method.getReturnType());
                     return null;
                 });
