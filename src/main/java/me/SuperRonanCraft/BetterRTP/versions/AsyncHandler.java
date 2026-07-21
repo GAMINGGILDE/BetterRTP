@@ -40,6 +40,11 @@ public class AsyncHandler {
         return Bukkit.getGlobalRegionScheduler().runDelayed(getPlugin(), task -> runnable.run(), ticks);
     }
 
+    public static ScheduledTask syncLaterAtEntity(Entity entity, Runnable runnable, long ticks) {
+        return entity.getScheduler().runDelayed(
+                getPlugin(), task -> runnable.run(), null, ticks);
+    }
+
     private static BetterRTP getPlugin() {
         return BetterRTP.getInstance();
     }

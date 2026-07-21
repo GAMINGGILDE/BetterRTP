@@ -26,8 +26,11 @@ public class RTPTeleport {
         effects.load();
     }
 
-    void sendPlayer(final CommandSender sendi, final Player p, final Location location, final WorldPlayer wPlayer,
-                    final int attempts, RTP_TYPE type) throws NullPointerException {
+    void sendPlayer(final CommandSender sendi, final RTPPlayer session, final Location location) {
+        Player p = session.getPlayer();
+        WorldPlayer wPlayer = session.getWorldPlayer();
+        int attempts = session.getAttempts();
+        RTP_TYPE type = session.getType();
         Location oldLoc = p.getLocation();
         loadingTeleport(p, sendi); //Send loading message to player who requested
         try {
@@ -38,28 +41,44 @@ public class RTPTeleport {
                 if (throwable != null) {
                     getPl().getLogger().log(Level.WARNING,
                             "Unable to teleport " + p.getName() + " asynchronously", throwable);
-                    AsyncHandler.syncAtEntity(p, () -> getPl().getPInfo().getRtping().remove(p));
+                    AsyncHandler.syncAtEntity(p, session::finish);
                     return;
                 }
                 if (!Boolean.TRUE.equals(success)) {
                     getPl().getLogger().warning("Asynchronous teleport failed for " + p.getName());
-                    AsyncHandler.syncAtEntity(p, () -> getPl().getPInfo().getRtping().remove(p));
+                    AsyncHandler.syncAtEntity(p, session::finish);
                     return;
                 }
                 AsyncHandler.syncAtEntity(p, () -> {
-                    afterTeleport(p, loc, wPlayer, attempts, oldLoc, type);
-                    if (sendi != p) //Tell player who requested that the player rtp'd
-                        sendSuccessMsg(sendi, p.getName(), loc, wPlayer, false, attempts);
-                    getPl().getPInfo().getRtping().remove(p); //No longer rtp'ing
-                    //Save respawn location if first join
-                    if (type == RTP_TYPE.JOIN) //RTP Type was Join
-                        if (BetterRTP.getInstance().getSettings().isRtpOnFirstJoin_SetAsRespawn()) //Save as respawn is enabled
+                    try {
+                        afterTeleport(p, loc, wPlayer, attempts, oldLoc, type);
+                        notifyRequester(sendi, p, loc, wPlayer, attempts);
+                        if (type == RTP_TYPE.JOIN
+                                && BetterRTP.getInstance().getSettings().isRtpOnFirstJoin_SetAsRespawn()) {
                             p.setRespawnLocation(loc, true);
+                        }
+                    } finally {
+                        session.finish();
+                    }
                 });
             });
         } catch (Exception e) {
-            getPl().getPInfo().getRtping().remove(p); //No longer rtp'ing (errored)
+            session.finish();
             getPl().getLogger().log(Level.WARNING, "Unable to start teleport for " + p.getName(), e);
+        }
+    }
+
+    private void notifyRequester(CommandSender sender, Player teleportedPlayer, Location location,
+                                 WorldPlayer worldPlayer, int attempts) {
+        if (sender == teleportedPlayer) {
+            return;
+        }
+        Runnable notification = () -> sendSuccessMsg(
+                sender, teleportedPlayer.getName(), location, worldPlayer, false, attempts);
+        if (sender instanceof Player requestingPlayer) {
+            AsyncHandler.syncAtEntity(requestingPlayer, notification);
+        } else {
+            AsyncHandler.sync(notification);
         }
     }
 

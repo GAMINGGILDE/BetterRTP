@@ -13,10 +13,13 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 class RTPDelay implements Listener {
     private ScheduledTask task;
     private final boolean cancelOnMove, cancelOnDamage;
     private final RTPPlayer rtp;
+    private final AtomicBoolean cancelled = new AtomicBoolean();
 
     RTPDelay(CommandSender sendi, RTPPlayer rtp, int delay, boolean cancelOnMove, boolean cancelOnDamage) {
         this.cancelOnMove = cancelOnMove;
@@ -27,9 +30,11 @@ class RTPDelay implements Listener {
 
     private void delay(CommandSender sendi, int delay) {
         if (!getPl().getRTP().getTeleport().beforeTeleportDelay(rtp.getPlayer(), delay)) {
-            task = AsyncHandler.syncLater(run(sendi, this), delay * 20L);
+            task = AsyncHandler.syncLaterAtEntity(rtp.getPlayer(), run(sendi, this), delay * 20L);
             if (cancelOnMove || cancelOnDamage)
                 Bukkit.getPluginManager().registerEvents(this, BetterRTP.getInstance());
+        } else {
+            rtp.cancel();
         }
     }
 
@@ -58,20 +63,22 @@ class RTPDelay implements Listener {
     }
 
     private void cancel() {
+        if (!cancelled.compareAndSet(false, true)) {
+            return;
+        }
         if (task != null)
             task.cancel();
         HandlerList.unregisterAll(this);
         getPl().getRTP().getTeleport().cancelledTeleport(rtp.getPlayer());
         //getPl().getEco().unCharge(rtp.getPlayer(), rtp.pWorld);
-        getPl().getCooldowns().removeCooldown(rtp.getPlayer(), rtp.worldPlayer.getWorld());
-        getPl().getPInfo().getRtping().remove(rtp.getPlayer());
+        rtp.cancel();
         Bukkit.getServer().getPluginManager().callEvent(new RTP_CancelledEvent(rtp.getPlayer()));
     }
 
     private Runnable run(final CommandSender sendi, final RTPDelay cls) {
         return () -> {
             HandlerList.unregisterAll(cls);
-            if (getPl().getPInfo().getRtping().containsKey(rtp.getPlayer()))
+            if (rtp.isActive())
                 rtp.randomlyTeleport(sendi);
         };
     }
