@@ -39,6 +39,9 @@ Particles: #Use `rtp info particles` for a list of particles
 Invincible: #Amount of time a player should not take damage for
   Enabled: true
   Seconds: 5
+  # Damage causes listed here bypass RTP invincibility. Examples: KILL, SUICIDE, VOID, CUSTOM
+  # An empty list preserves the previous behavior and blocks every damage cause.
+  IgnoredDamageCauses: []
 Potions: #Use `/rtp info potion_effects` for a list of effects
   Enabled: true
   Types: #Format <potion_name>:[duration_ticks]:[amplifier] #Default duration=60, amplifier=1

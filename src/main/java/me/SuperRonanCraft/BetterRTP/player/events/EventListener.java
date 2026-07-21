@@ -21,6 +21,7 @@ public class EventListener implements Listener {
 
     public void load() {
         interact.load();
+        Damage.load();
     }
 
     @EventHandler
