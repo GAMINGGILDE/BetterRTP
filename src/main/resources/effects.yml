@@ -1,8 +1,8 @@
 Sounds:
   Enabled: true
-  ## More sounds at https://www.spigotmc.org/wiki/cc-sounds-list/
-  Delay: 'entity_tnt_primed'
-  Success: 'entity_generic_explode'
+  ## Modern Minecraft sound keys. Legacy Bukkit names from BetterRTP 3.x remain supported.
+  Delay: 'minecraft:entity.tnt.primed'
+  Success: 'minecraft:entity.generic.explode'
 Titles:
   Enabled: true # Enable the titles effect feature
   ## All support %player% %x% %y% and %z% placeholders
