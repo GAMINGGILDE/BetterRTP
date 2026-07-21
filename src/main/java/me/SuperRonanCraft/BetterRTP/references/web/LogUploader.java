@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Scanner;
@@ -21,8 +21,7 @@ public class LogUploader {
     @Nullable
    public static String post(List<String> requestBody) {
         try {
-            URL url = new URL(UPLOAD_URL);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            HttpURLConnection connection = (HttpURLConnection) URI.create(UPLOAD_URL).toURL().openConnection();
             connection.setRequestMethod("POST");
             connection.setRequestProperty("Content-Type", "text/plain");
             connection.setDoOutput(true);
@@ -54,8 +53,7 @@ public class LogUploader {
     public static String post(File file) {
         // Create the connection to the server
         try {
-            URL url = new URL(UPLOAD_URL);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            HttpURLConnection connection = (HttpURLConnection) URI.create(UPLOAD_URL).toURL().openConnection();
             connection.setRequestMethod("POST");
             connection.setRequestProperty("Content-Type", "text/yaml");
             connection.setDoOutput(true);

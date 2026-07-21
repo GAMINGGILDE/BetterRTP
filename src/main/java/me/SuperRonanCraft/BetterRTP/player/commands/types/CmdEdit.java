@@ -247,6 +247,12 @@ public class CmdEdit implements RTPCommand, RTPCommandHelpable { //Edit a worlds
                             break;
                         case PERMISSION_GROUP:
                             list.addAll(tabCompleteSub(args, cmd)); break;
+                        case DEFAULT:
+                        case WORLD_TYPE:
+                        case OVERRIDE:
+                        case BLACKLISTEDBLOCKS:
+                            // These commands are complete before the fifth argument.
+                            break;
                     }
         } else if (args.length == 6) {
             for (RTP_CMD_EDIT cmd : RTP_CMD_EDIT.values())
@@ -260,6 +266,14 @@ public class CmdEdit implements RTPCommand, RTPCommandHelpable { //Edit a worlds
                             else if (args[4].equalsIgnoreCase(RTP_CMD_EDIT_SUB.SHAPE.name()))
                                 for (RTP_SHAPE shape : RTP_SHAPE.values())
                                     list.add(shape.name().toLowerCase());
+                            break;
+                        case CUSTOMWORLD:
+                        case LOCATION:
+                        case DEFAULT:
+                        case WORLD_TYPE:
+                        case OVERRIDE:
+                        case BLACKLISTEDBLOCKS:
+                            // Only permission-group edits accept a sixth argument.
                             break;
                     }
         }

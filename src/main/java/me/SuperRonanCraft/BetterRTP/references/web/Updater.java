@@ -6,22 +6,22 @@ import org.bukkit.Bukkit;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.net.URL;
+import java.net.URI;
 import java.net.URLConnection;
 
 public class Updater {
 
-    public static String updatedVersion = BetterRTP.getInstance().getDescription().getVersion();
+    public static String updatedVersion = BetterRTP.getInstance().getPluginMeta().getVersion();
 
     public Updater(BetterRTP pl) {
         AsyncHandler.async(() -> {
             try {
-                URLConnection con = new URL(getUrl() + project()).openConnection();
+                URLConnection con = URI.create(getUrl() + project()).toURL().openConnection();
                 BufferedReader reader = new BufferedReader(new InputStreamReader(con.getInputStream()));
                 updatedVersion = reader.readLine();
             } catch (Exception ex) {
                 Bukkit.getConsoleSender().sendMessage("[BetterRTP] Failed to check for an update on spigot");
-                updatedVersion = pl.getDescription().getVersion();
+                updatedVersion = pl.getPluginMeta().getVersion();
             }
         });
     }

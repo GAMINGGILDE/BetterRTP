@@ -2,6 +2,7 @@ package me.SuperRonanCraft.BetterRTP.references.invs.enums;
 
 import java.util.List;
 
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -27,9 +28,12 @@ public interface RTPInventory_Defaults {
         ItemMeta _meta = _stack.getItemMeta();
         if (_meta != null) {
             if (lore != null)
-                _meta.setLore(lore);
+                _meta.lore(lore.stream()
+                        .map(Message::component)
+                        .map(line -> line.decoration(TextDecoration.ITALIC, false))
+                        .toList());
             if (name != null)
-                _meta.setDisplayName(Message.color(name));
+                _meta.displayName(Message.component(name).decoration(TextDecoration.ITALIC, false));
         }
         _stack.setItemMeta(_meta);
         return _stack;
@@ -42,7 +46,6 @@ public interface RTPInventory_Defaults {
     }
 
     default Inventory createInv(int size, String title) {
-        title = Message.color(title);
-        return Bukkit.createInventory(null, size, title);
+        return Bukkit.createInventory(null, size, Message.component(title));
     }
 }

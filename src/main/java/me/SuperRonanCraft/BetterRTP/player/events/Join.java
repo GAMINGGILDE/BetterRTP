@@ -27,8 +27,8 @@ public class Join {
     //Updater
     private static void updater(Player p) {
         if (!getPl().getFiles().getType(FileOther.FILETYPE.CONFIG).getBoolean("Settings.DisableUpdater") && PermissionNode.UPDATER.check(p)) {
-            if (!getPl().getDescription().getVersion().equals(Updater.updatedVersion)) {
-                String currentVersion = getPl().getDescription().getVersion();
+            if (!getPl().getPluginMeta().getVersion().equals(Updater.updatedVersion)) {
+                String currentVersion = getPl().getPluginMeta().getVersion();
                 String newVersion = Updater.updatedVersion;
 
                 MessagesCore.UPDATE.send(p, Arrays.asList(currentVersion, newVersion));

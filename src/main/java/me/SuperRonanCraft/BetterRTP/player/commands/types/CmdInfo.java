@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -25,6 +24,7 @@ import me.SuperRonanCraft.BetterRTP.player.rtp.effects.RTPEffect_Particles;
 import me.SuperRonanCraft.BetterRTP.references.PermissionCheck;
 import me.SuperRonanCraft.BetterRTP.references.PermissionNode;
 import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP;
+import me.SuperRonanCraft.BetterRTP.references.helpers.PotionEffectHelper;
 import me.SuperRonanCraft.BetterRTP.references.messages.Message;
 import me.SuperRonanCraft.BetterRTP.references.messages.Message_RTP;
 import me.SuperRonanCraft.BetterRTP.references.messages.MessagesCore;
@@ -33,10 +33,9 @@ import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueHandler;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldDefault;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPlayer;
 import me.SuperRonanCraft.BetterRTP.references.web.LogUploader;
-import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.ComponentBuilder;
-import net.md_5.bungee.api.chat.HoverEvent;
-import net.md_5.bungee.api.chat.TextComponent;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
 import xyz.xenondevs.particle.ParticleEffect;
 
 public class CmdInfo implements RTPCommand, RTPCommandHelpable {
@@ -146,16 +145,17 @@ public class CmdInfo implements RTPCommand, RTPCommandHelpable {
         if (!upload) {
             sendi.sendMessage(list.toArray(new String[0]));
             if (sendi instanceof Player) {
-                TextComponent component = new TextComponent(Message.color("&7- &7Click to upload command log to &flogs.ronanplugins.com"));
-                component.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, cmd + " _UPLOAD_"));
-                component.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ComponentBuilder(Message.color("&6Suggested command&f: &7" + "/betterrtp " + String.join(" ", args) + " _UPLOAD_")).create()));
-                ((Player) sendi).spigot().sendMessage(component);
+                Component component = Message.component("&7- &7Click to upload command log to &flogs.ronanplugins.com")
+                        .clickEvent(ClickEvent.suggestCommand(cmd + " _UPLOAD_"))
+                        .hoverEvent(HoverEvent.showText(Message.component("&6Suggested command&f: &7"
+                                + "/betterrtp " + String.join(" ", args) + " _UPLOAD_")));
+                sendi.sendMessage(component);
             } else {
                 sendi.sendMessage("Execute `" + cmd + " _UPLOAD_`" + " to upload command log to https://logs.ronanplugins.com");
             }
         } else {
             list.add(0, "Command: " + cmd);
-            list.forEach(str -> list.set(list.indexOf(str), ChatColor.stripColor(str)));
+            list.forEach(str -> list.set(list.indexOf(str), Message.stripColor(str)));
             CompletableFuture.runAsync(() -> {
                 String key = LogUploader.post(list);
                 if (key == null) {
@@ -247,11 +247,12 @@ public class CmdInfo implements RTPCommand, RTPCommandHelpable {
     private void infoEffects(CommandSender sendi) {
         List<String> info = new ArrayList<>();
 
-        for (PotionEffectType effect : PotionEffectType.values()) {
+        for (PotionEffectType effect : PotionEffectHelper.stream().toList()) {
+            String effectName = PotionEffectHelper.name(effect);
             if (info.isEmpty() || info.size() % 2 == 0) {
-                info.add("&7" + effect.getName() + "&r");
+                info.add("&7" + effectName + "&r");
             } else
-                info.add("&f" + effect.getName() + "&r");
+                info.add("&f" + effectName + "&r");
         }
 
         info.forEach(str ->

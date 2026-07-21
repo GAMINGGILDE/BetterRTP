@@ -15,7 +15,8 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.net.URL;
+import java.net.URI;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
@@ -83,12 +84,12 @@ public class Metrics {
             config.addDefault("logFailedRequests", false);
 
             // Inform the server owners about bStats
-            config.options().header(
-                    "bStats collects some data for plugin authors like how many servers are using their plugins.\n" +
-                            "To honor their work, you should not disable it.\n" +
-                            "This has nearly no effect on the server performance!\n" +
-                            "Check out https://bStats.org/ to learn more :)"
-            ).copyDefaults(true);
+            config.options().setHeader(List.of(
+                    "bStats collects some data for plugin authors like how many servers are using their plugins.",
+                    "To honor their work, you should not disable it.",
+                    "This has nearly no effect on the server performance!",
+                    "Check out https://bStats.org/ to learn more :)"
+            )).copyDefaults(true);
             try {
                 config.save(configFile);
             } catch (IOException ignored) { }
@@ -147,8 +148,8 @@ public class Metrics {
     public JsonObject getPluginData() {
         JsonObject data = new JsonObject();
 
-        String pluginName = plugin.getDescription().getName();
-        String pluginVersion = plugin.getDescription().getVersion();
+        String pluginName = plugin.getPluginMeta().getName();
+        String pluginVersion = plugin.getPluginMeta().getVersion();
 
         data.addProperty("pluginName", pluginName);
         data.addProperty("pluginVersion", pluginVersion);
@@ -246,7 +247,7 @@ public class Metrics {
         if (Bukkit.isPrimaryThread()) {
             throw new IllegalAccessException("This method must not be called from the main thread!");
         }
-        HttpsURLConnection connection = (HttpsURLConnection) new URL(URL).openConnection();
+        HttpsURLConnection connection = (HttpsURLConnection) URI.create(URL).toURL().openConnection();
 
         // Compress the data to save bandwidth
         byte[] compressedData = compress(data.toString());

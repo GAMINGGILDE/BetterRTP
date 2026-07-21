@@ -11,12 +11,10 @@ import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueHandler;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPlayer;
 import me.SuperRonanCraft.BetterRTP.references.web.LogUploader;
 import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
-import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.ComponentBuilder;
-import net.md_5.bungee.api.chat.HoverEvent;
-import net.md_5.bungee.api.chat.TextComponent;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
@@ -58,16 +56,17 @@ public class CmdQueue implements RTPCommand {
         if (!upload) {
             sendi.sendMessage(list.toArray(new String[0]));
             if (sendi instanceof Player) {
-                TextComponent component = new TextComponent(Message.color("&7- &7Click to upload command log to &flogs.ronanplugins.com"));
-                component.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, cmd + " _UPLOAD_"));
-                component.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ComponentBuilder(Message.color("&6Suggested command&f: &7" + "/betterrtp " + String.join(" ", args) + " _UPLOAD_")).create()));
-                ((Player) sendi).spigot().sendMessage(component);
+                Component component = Message.component("&7- &7Click to upload command log to &flogs.ronanplugins.com")
+                        .clickEvent(ClickEvent.suggestCommand(cmd + " _UPLOAD_"))
+                        .hoverEvent(HoverEvent.showText(Message.component("&6Suggested command&f: &7"
+                                + "/betterrtp " + String.join(" ", args) + " _UPLOAD_")));
+                sendi.sendMessage(component);
             } else {
                 sendi.sendMessage("Execute `" + cmd + " _UPLOAD_`" + " to upload command log to https://logs.ronanplugins.com");
             }
         } else {
             list.add(0, "Command: " + cmd);
-            list.forEach(str -> list.set(list.indexOf(str), ChatColor.stripColor(str)));
+            list.forEach(str -> list.set(list.indexOf(str), Message.stripColor(str)));
             CompletableFuture.runAsync(() -> {
                 String key = LogUploader.post(list);
                 if (key == null) {

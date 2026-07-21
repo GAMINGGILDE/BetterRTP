@@ -2,6 +2,7 @@ package me.SuperRonanCraft.BetterRTP.player.rtp.effects;
 
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.references.file.FileOther;
+import me.SuperRonanCraft.BetterRTP.references.helpers.PotionEffectHelper;
 import me.SuperRonanCraft.BetterRTP.references.player.HelperPlayer;
 import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
 import org.bukkit.entity.Player;
@@ -34,7 +35,7 @@ public class RTPEffect_Potions { //Potions AND Invincibility
             for (String p : list) {
                 String[] ary = p.replaceAll(" ", "").split(":");
                 String type = ary[0].trim();
-                PotionEffectType effect = PotionEffectType.getByName(type);
+                PotionEffectType effect = PotionEffectHelper.find(type);
                 if (effect != null) {
                     try {
                         int duration = ary.length >= 2 ? Integer.parseInt(ary[1]) : 60;

@@ -38,7 +38,7 @@ public class RandomLocation {
     private static Location getLocAtNormal(int x, int z, int minY, int maxY, World world, List<String> biomes) {
         Block b = getHighestBlock(x, z, world);
         if (!b.getType().isSolid()) { //Water, lava, shrubs...
-            if (!badBlock(b.getType().name(), x, z, world, null)) { //Make sure it's not an invalid block (ex: water, lava...)
+            if (!badBlock(b.getType().name(), x, b.getY(), z, world, null)) { //Make sure it's not an invalid block (ex: water, lava...)
                 //int y = world.getHighestBlockYAt(x, z);
                 b = world.getBlockAt(x, b.getY() - 1, z);
             }
@@ -46,7 +46,7 @@ public class RandomLocation {
         //Between max and min y
         if (    b.getY() >= minY
                 && b.getY() <= maxY
-                && !badBlock(b.getType().name(), x, z, world, biomes)) {
+                && !badBlock(b.getType().name(), x, b.getY(), z, world, biomes)) {
             return new Location(world, x, b.getY() + 1, z);
         }
         return null;
@@ -67,14 +67,14 @@ public class RandomLocation {
                 if (!block_current.getType().name().endsWith("AIR") &&
                         !block_current.getType().isSolid()) { //Block is not a solid (ex: lava, water...)
                     String block_in = block_current.getType().name();
-                    if (badBlock(block_in, x, z, world, null))
+                    if (badBlock(block_in, x, y, z, world, null))
                         continue;
                 }
                 String block = world.getBlockAt(x, y - 1, z).getType().name();
                 if (block.endsWith("AIR")) //Block below is air, skip
                     continue;
                 if (world.getBlockAt(x, y + 1, z).getType().name().endsWith("AIR") //Head space
-                        && !badBlock(block, x, z, world, biomes)) //Valid block
+                        && !badBlock(block, x, y, z, world, biomes)) //Valid block
                     return new Location(world, x, y, z);
             }
         }
@@ -82,14 +82,14 @@ public class RandomLocation {
     }
 
     // Bad blocks, or bad biome
-    public static boolean badBlock(String block, int x, int z, World world, List<String> biomes) {
+    public static boolean badBlock(String block, int x, int y, int z, World world, List<String> biomes) {
         for (String currentBlock : BetterRTP.getInstance().getRTP().getBlockList()) //Check Block
             if (currentBlock.equalsIgnoreCase(block))
                 return true;
         //Check Biomes
         if (biomes == null || biomes.isEmpty())
             return false;
-        String biomeCurrent = BiomeHelper.name(world.getBiome(x, z));
+        String biomeCurrent = BiomeHelper.name(world.getBiome(x, y, z));
         for (String biome : biomes)
             if (biomeCurrent.toUpperCase().contains(biome.toUpperCase()))
                 return false;
@@ -121,7 +121,7 @@ public class RandomLocation {
                 try {
                     ChunkSnapshot snapshot = chunk.getChunkSnapshot(true, true, false);
                     int maxy = snapshot.getHighestBlockYAt(8, 8);
-                    Biome biome = snapshot.getBiome(8, 8);
+                    Biome biome = snapshot.getBiome(8, maxy, 8);
                     BetterRTP.getInstance().getDatabaseHandler().getDatabaseChunks().addChunk(chunk, maxy, biome);
                     cacheTask(world, goal, start, xat, zat);
                 } catch (Throwable e) {

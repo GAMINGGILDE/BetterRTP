@@ -15,6 +15,7 @@ import me.SuperRonanCraft.BetterRTP.player.rtp.RTP_PlayerInfo;
 import me.SuperRonanCraft.BetterRTP.player.rtp.RTP_TYPE;
 import me.SuperRonanCraft.BetterRTP.references.PermissionNode;
 import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP;
+import me.SuperRonanCraft.BetterRTP.references.messages.Message;
 import me.SuperRonanCraft.BetterRTP.references.messages.MessagesCore;
 import me.SuperRonanCraft.BetterRTP.references.messages.MessagesUsage;
 
@@ -64,7 +65,7 @@ public class CmdPlayerSudo implements RTPCommand {
         List<String> list = new ArrayList<>();
         if (args.length == 2) {
             for (Player p : Bukkit.getOnlinePlayers())
-                if (p.getDisplayName().toLowerCase().startsWith(args[1].toLowerCase()))
+                if (Message.plain(p.displayName()).toLowerCase().startsWith(args[1].toLowerCase()))
                     list.add(p.getName());
         } else if (args.length == 3) {
             for (World w : Bukkit.getWorlds())
