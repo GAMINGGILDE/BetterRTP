@@ -22,9 +22,8 @@ import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -75,9 +74,9 @@ public class CmdQueue implements RTPCommand {
                     Message.sms(sendi, new ArrayList<>(Collections.singletonList("&cAn error occured attempting to upload log!")), null);
                 } else {
                     try {
-                        JSONObject json = (JSONObject) new JSONParser().parse(key);
-                        Message.sms(sendi, Arrays.asList(" ", Message.getPrefix(Message_RTP.msg) + "&aLog uploaded! &fView&7: &6https://logs.ronanplugins.com/" + json.get("key")), null);
-                    } catch (ParseException e) {
+                        String uploadKey = JsonParser.parseString(key).getAsJsonObject().get("key").getAsString();
+                        Message.sms(sendi, Arrays.asList(" ", Message.getPrefix(Message_RTP.msg) + "&aLog uploaded! &fView&7: &6https://logs.ronanplugins.com/" + uploadKey), null);
+                    } catch (JsonParseException | IllegalStateException e) {
                         throw new RuntimeException(e);
                     }
                 }

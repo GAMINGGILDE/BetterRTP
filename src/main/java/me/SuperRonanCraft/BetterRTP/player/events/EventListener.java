@@ -1,7 +1,6 @@
 package me.SuperRonanCraft.BetterRTP.player.events;
 
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
-import me.SuperRonanCraft.BetterRTP.references.customEvents.RTP_TeleportPostEvent;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.SignChangeEvent;
@@ -52,11 +51,6 @@ public class EventListener implements Listener {
     @EventHandler
     private void teleport(PlayerTeleportEvent e) {
         Teleport.tpEvent(e);
-    }
-
-    @EventHandler
-    private void rtpPost(RTP_TeleportPostEvent e) {
-        Custom.postRTP(e);
     }
 
     @EventHandler

@@ -14,7 +14,7 @@ BetterRTP ist ein umfangreich konfigurierbares Zufallsteleport-Plugin für moder
 - Optionale Abklingzeiten, Verzögerungen, Economy-Kosten und Nahrungskosten
 - Vorab generierte Teleportziele mit SQLite-Speicherung
 - Folia-kompatibles Scheduling für Regionen, Zielorte und Entitäten
-- Optionale Integrationen mit Vault, WorldGuard, GriefPrevention, Towny, Lands, Residence, PlaceholderAPI und weiteren Schutz-Plugins
+- Schlanke optionale Integrationen mit Vault, PlaceholderAPI, WorldGuard, GriefPrevention, Towny und Lands
 - Mitgelieferte Sprachdateien unter [`src/main/resources/lang`](src/main/resources/lang)
 
 ## Voraussetzungen
@@ -103,7 +103,7 @@ mvn clean package
 
 BetterRTP wurde ursprünglich von [SuperRonanCraft](https://github.com/SuperRonanCraft) entwickelt und gepflegt. Dieser Fork wird von [Christian F](https://github.com/CFPlusPlus) für [GAMINGGILDE](https://github.com/GAMINGGILDE) betreut.
 
-Das Projekt bindet unter anderem [PaperLib](https://github.com/PaperMC/PaperLib), [FoliaLib](https://github.com/TechnicallyCoded/FoliaLib) und [ParticleLib](https://github.com/ByteZ1337/ParticleLib) ein. Weitere optionale Server-Integrationen sind in der `pom.xml` aufgeführt.
+Das Plugin verwendet direkt die Scheduler- und Teleport-APIs von Paper und Folia. [ParticleLib](https://github.com/ByteZ1337/ParticleLib) wird für Partikeleffekte in die Plugin-JAR eingebettet. Die unterstützten optionalen Integrationen sind in der `pom.xml` aufgeführt.
 
 Die ursprüngliche BetterRTP-Ressource ist weiterhin auf [SpigotMC](https://www.spigotmc.org/resources/36081/) verfügbar.
 

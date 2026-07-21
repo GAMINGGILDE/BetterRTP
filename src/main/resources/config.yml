@@ -5,42 +5,14 @@ Language-File: 'en.yml'
 
 Settings:
   Respect:
-    ## Respect MinePlots plots (https://builtbybit.com/resources/mineplots.21646/)
-    MinePlots: false
     ## Respect WorldGuard areas (https://dev.bukkit.org/projects/worldguard)
     WorldGuard: false
     ## Respect GriefPrevention areas (https://www.spigotmc.org/resources/griefprevention.1884/)
     GriefPrevention: false
     ## Respect Towny areas (https://www.spigotmc.org/resources/towny.72694/)
     Towny: false
-    ## Respect RedProtect areas (https://www.spigotmc.org/resources/redprotect.15841/)
-    RedProtect: false
-    ## Respect FactionsUUID areas (https://www.spigotmc.org/resources/factionsuuid.1035/)
-    FactionsUUID: false
     ## Respect Lands areas (https://www.spigotmc.org/resources/lands.53313/)
     Lands: false
-    ## Respect Residence areas (https://www.spigotmc.org/resources/residence.11480/)
-    Residence: false
-    ## Respect KingdomsX areas (https://www.spigotmc.org/resources/kingdomsx.77670/)
-    KingdomsX: false
-    ## Respect hClaims areas (https://www.spigotmc.org/resources/hclaims.90540/)
-    hClaims: false
-    ## Respect GriefDefender areas (https://www.spigotmc.org/resources/griefdefender.68900/)
-    GriefDefender: false
-    ## Respect UltimateClaims areas (https://songoda.com/marketplace/product/ultimateclaims-the-ultimate-claiming-plugin.65)
-    UltimateClaims: false
-    ## Respect Pueblos regions (https://www.spigotmc.org/resources/pueblos.91255/) (My Favorite :D)
-    Pueblos: false
-    ## Respect SaberFactions areas (https://www.spigotmc.org/resources/saberfactions.69771/) (Added in 3.4.5)
-    SaberFactions: false
-    ## Respect HuskClaims areas (https://www.spigotmc.org/resources/huskclaims-1-17-1-21-modern-golden-shovel-land-claiming-fully-cross-server-compatible.114467/) (Added in 1.5.2)
-    HuskClaims: false
-    ## Respect HuskTowns areas (https://www.spigotmc.org/resources/husktowns.92672/) (Added in 3.4.5)
-    HuskTowns: false
-    ## Respect FactionsBridge compatible claims (https://www.spigotmc.org/resources/factionsbridge.89716/) (Added in 3.6.9)
-    FactionsBridge: false
-    ## Respect CrashClaim claims (https://www.spigotmc.org/resources/crashclaim-claiming-plugin.94037/) (Added in 3.6.9)
-    CrashClaim: false
 
   ## Output to console some debugging info
   Debugger: false

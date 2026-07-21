@@ -1,12 +1,13 @@
 package me.SuperRonanCraft.BetterRTP.references.web;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.io.ByteArrayOutputStream;
@@ -26,8 +27,9 @@ import java.util.zip.GZIPOutputStream;
  *
  * Check out https://bStats.org/ to learn more about bStats!
  */
-@SuppressWarnings("unchecked")
 public class Metrics {
+
+    private static final Gson GSON = new Gson();
 
     static {
         // Maven's Relocate is clever and changes strings, too. So we have to use this little "trick" ... :D
@@ -142,16 +144,15 @@ public class Metrics {
      *
      * @return The plugin specific data.
      */
-    public JSONObject getPluginData() {
-        JSONObject data = new JSONObject();
+    public JsonObject getPluginData() {
+        JsonObject data = new JsonObject();
 
         String pluginName = plugin.getDescription().getName();
         String pluginVersion = plugin.getDescription().getVersion();
 
-        data.put("pluginName", pluginName); // Append the name of the plugin
-        data.put("pluginVersion", pluginVersion); // Append the version of the plugin
-        JSONArray customCharts = new JSONArray();
-        data.put("customCharts", customCharts);
+        data.addProperty("pluginName", pluginName);
+        data.addProperty("pluginVersion", pluginVersion);
+        data.add("customCharts", new JsonArray());
 
         return data;
     }
@@ -161,7 +162,7 @@ public class Metrics {
      *
      * @return The server specific data.
      */
-	private JSONObject getServerData() {
+	private JsonObject getServerData() {
         // Minecraft specific data
         int playerAmount = Bukkit.getOnlinePlayers().size();
         int onlineMode = Bukkit.getOnlineMode() ? 1 : 0;
@@ -175,19 +176,19 @@ public class Metrics {
         String osVersion = System.getProperty("os.version");
         int coreCount = Runtime.getRuntime().availableProcessors();
 
-        JSONObject data = new JSONObject();
+        JsonObject data = new JsonObject();
 
-        data.put("serverUUID", serverUUID);
+        data.addProperty("serverUUID", serverUUID);
 
-        data.put("playerAmount", playerAmount);
-        data.put("onlineMode", onlineMode);
-        data.put("bukkitVersion", bukkitVersion);
+        data.addProperty("playerAmount", playerAmount);
+        data.addProperty("onlineMode", onlineMode);
+        data.addProperty("bukkitVersion", bukkitVersion);
 
-        data.put("javaVersion", javaVersion);
-        data.put("osName", osName);
-        data.put("osArch", osArch);
-        data.put("osVersion", osVersion);
-        data.put("coreCount", coreCount);
+        data.addProperty("javaVersion", javaVersion);
+        data.addProperty("osName", osName);
+        data.addProperty("osArch", osArch);
+        data.addProperty("osVersion", osVersion);
+        data.addProperty("coreCount", coreCount);
 
         return data;
     }
@@ -196,9 +197,9 @@ public class Metrics {
      * Collects the data and sends it afterwards.
      */
     private void submitData() {
-        final JSONObject data = getServerData();
+        final JsonObject data = getServerData();
 
-        JSONArray pluginData = new JSONArray();
+        JsonArray pluginData = new JsonArray();
         // Search for all other bStats Metrics classes to get their plugin data
         for (Class<?> service : Bukkit.getServicesManager().getKnownServices()) {
             try {
@@ -208,11 +209,12 @@ public class Metrics {
             }
             // Found one!
             try {
-                pluginData.add(service.getMethod("getPluginData").invoke(Bukkit.getServicesManager().load(service)));
+                Object serviceData = service.getMethod("getPluginData").invoke(Bukkit.getServicesManager().load(service));
+                pluginData.add(GSON.toJsonTree(serviceData));
             } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) { }
         }
 
-        data.put("plugins", pluginData);
+        data.add("plugins", pluginData);
 
         // Create a new thread for the connection to the bStats server
         new Thread(new Runnable() {
@@ -237,7 +239,7 @@ public class Metrics {
      * @param data The data to send.
      * @throws Exception If the request failed.
      */
-    private static void sendData(JSONObject data) throws Exception {
+    private static void sendData(JsonObject data) throws Exception {
         if (data == null) {
             throw new IllegalArgumentException("Data cannot be null!");
         }
