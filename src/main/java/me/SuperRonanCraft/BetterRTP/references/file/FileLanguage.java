@@ -43,17 +43,20 @@ public class FileLanguage implements FileData {
         }
         try {
             config.load(file);
-            InputStream in = plugin().getResource(fileName);
-            if (in == null)
-                in = plugin().getResource(fileName.replace(File.separator, "/"));
-            if (in != null) {
-                config.setDefaults(YamlConfiguration.loadConfiguration(new InputStreamReader(in)));
-                config.options().copyDefaults(true);
-                in.close();
+            YamlConfiguration languageDefaults = loadResource(fileName);
+            YamlConfiguration englishDefaults = loadResource("lang/en.yml");
+            if (languageDefaults != null) {
+                if (englishDefaults != null) {
+                    languageDefaults.setDefaults(englishDefaults);
+                }
+                config.setDefaults(languageDefaults);
+                config.options().copyDefaults(false);
             }
-            config.save(file);
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Exception exception) {
+            plugin().getLogger().log(
+                    java.util.logging.Level.SEVERE,
+                    "Unable to load language file " + fileName, exception);
+            throw new IllegalStateException("Invalid BetterRTP language file: " + fileName, exception);
         }
     }
 
@@ -83,36 +86,25 @@ public class FileLanguage implements FileData {
     private void generateDefaults() {
         // Generate all language files
         for (String yaml : defaultLangs) {
-            generateDefaultConfig(yaml, yaml); // Generate defaults of this language
-
-            // Not english, make sure all options are present
-            if (!yaml.equals(defaultLangs[0]))
-                // Generate the english defaults (in case some options are missing)
-                generateDefaultConfig(yaml, defaultLangs[0]);
+            generateDefaultConfig(yaml);
         }
     }
 
-    private void generateDefaultConfig(String fName, String fNameDef /*Name of file to generate defaults*/) {
+    private void generateDefaultConfig(String fName) {
         String fileName = "lang" + File.separator + fName;
         File file = new File(plugin().getDataFolder(), fileName);
-        if (!file.exists())
+        if (!file.exists()) {
             plugin().saveResource(fileName, false);
-        try {
-            YamlConfiguration config = new YamlConfiguration();
-            config.load(file);
-            String fileNameDef = "lang" + File.separator + fNameDef;
-            InputStream in = plugin().getResource(fileNameDef);
-            if (in == null)
-                in = plugin().getResource(fileNameDef.replace(File.separator, "/"));
-            if (in != null) {
-                config.setDefaults(YamlConfiguration.loadConfiguration(new InputStreamReader(in, StandardCharsets.UTF_8)));
-                config.options().copyDefaults(true);
-                in.close();
-            }
-            config.save(file);
-        } catch (Exception e) {
-            e.printStackTrace();
         }
+    }
 
+    private YamlConfiguration loadResource(String fileName) throws Exception {
+        InputStream input = plugin().getResource(fileName.replace(File.separator, "/"));
+        if (input == null) {
+            return null;
+        }
+        try (input) {
+            return YamlConfiguration.loadConfiguration(new InputStreamReader(input, StandardCharsets.UTF_8));
+        }
     }
 }

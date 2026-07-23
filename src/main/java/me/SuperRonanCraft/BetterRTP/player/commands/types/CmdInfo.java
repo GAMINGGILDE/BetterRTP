@@ -4,18 +4,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
+import org.bukkit.Particle;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
 
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.player.commands.RTPCommand;
@@ -26,19 +22,19 @@ import me.SuperRonanCraft.BetterRTP.player.rtp.effects.RTPEffect_Particles;
 import me.SuperRonanCraft.BetterRTP.references.PermissionCheck;
 import me.SuperRonanCraft.BetterRTP.references.PermissionNode;
 import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP;
+import me.SuperRonanCraft.BetterRTP.references.helpers.PotionEffectHelper;
 import me.SuperRonanCraft.BetterRTP.references.messages.Message;
 import me.SuperRonanCraft.BetterRTP.references.messages.Message_RTP;
 import me.SuperRonanCraft.BetterRTP.references.messages.MessagesCore;
 import me.SuperRonanCraft.BetterRTP.references.messages.MessagesHelp;
-import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueHandler;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldDefault;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPlayer;
 import me.SuperRonanCraft.BetterRTP.references.web.LogUploader;
-import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.ComponentBuilder;
-import net.md_5.bungee.api.chat.HoverEvent;
-import net.md_5.bungee.api.chat.TextComponent;
-import xyz.xenondevs.particle.ParticleEffect;
+import me.SuperRonanCraft.BetterRTP.references.web.LogUploadResult;
+import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
 
 public class CmdInfo implements RTPCommand, RTPCommandHelpable {
 
@@ -47,52 +43,18 @@ public class CmdInfo implements RTPCommand, RTPCommandHelpable {
     }
 
     public void execute(CommandSender sendi, String label, String[] args) {
-        if (args.length > 1) {
-            if (args[1].equalsIgnoreCase(CmdInfoSub.PARTICLES.name()))
-                infoParticles(sendi);
-            else if (args[1].equalsIgnoreCase(CmdInfoSub.SHAPES.name()))
-                infoShapes(sendi);
-            else if (args[1].equalsIgnoreCase(CmdInfoSub.POTION_EFFECTS.name()))
-                infoEffects(sendi);
-            else if (args[1].equalsIgnoreCase(CmdInfoSub.WORLD.name())) {
-                World world = null;
-                Player player = null;
-                if (args.length > 2) {
-                    world = Bukkit.getWorld(args[2]);
-                    if (world == null) {
-                        MessagesCore.DISABLED_WORLD.send(sendi, args[2]);
-                        return;
-                    }
-                } else {
-                    MessagesCore.DISABLED_WORLD.send(sendi, "NULL");
-                    return;
-                }
-                if (args.length > 3) {
-                    player = Bukkit.getPlayer(args[3]);
-                    if (player == null) {
-                        MessagesCore.NOTONLINE.send(sendi, args[2]);
-                        return;
-                    }
-                }
-                sendInfoWorld(sendi, infoGetWorld(sendi, world, player, null), label, args);
-            } else if (args[1].equalsIgnoreCase(CmdInfoSub.PLAYER.name())) {
-                World world = null;
-                Player player = null;
-                if (args.length > 2) {
-                    player = Bukkit.getPlayer(args[2]);
-                    if (player != null)
-                        world = player.getWorld();
-                }
-                if (player == null) {
-                    MessagesCore.NOTONLINE.send(sendi, args.length > 2 ? args[2] : "NULL");
-                    return;
-                }
-                if (world == null)
-                    world = player.getWorld();
-                sendInfoWorld(sendi, infoGetWorld(sendi, world, player, null), label, args);
+        InfoCommandRequest request = InfoCommandRequest.parse(args);
+        switch (request.subcommand()) {
+            case OVERVIEW -> infoWorld(sendi, label, args);
+            case PARTICLES -> infoParticles(sendi);
+            case SHAPES -> infoShapes(sendi);
+            case POTION_EFFECTS -> infoEffects(sendi);
+            case WORLD -> executeWorldInfo(sendi, label, args, request);
+            case PLAYER -> executePlayerInfo(sendi, label, args, request);
+            case UNKNOWN -> {
+                // Preserve the historical no-output behavior for unknown info modes.
             }
-        } else
-            infoWorld(sendi, label, args);
+        }
     }
 
     @Override
@@ -100,8 +62,56 @@ public class CmdInfo implements RTPCommand, RTPCommandHelpable {
         return MessagesHelp.INFO.get();
     }
 
-    enum CmdInfoSub { //Sub commands, future expansions
-        PARTICLES, SHAPES, POTION_EFFECTS, WORLD, PLAYER
+    private void executeWorldInfo(
+            CommandSender sender, String label, String[] args,
+            InfoCommandRequest request) {
+        if (request.worldName() == null) {
+            MessagesCore.DISABLED_WORLD.send(sender, "NULL");
+            return;
+        }
+        World world = Bukkit.getWorld(request.worldName());
+        if (world == null) {
+            MessagesCore.DISABLED_WORLD.send(sender, request.worldName());
+            return;
+        }
+        Player player = request.playerName() == null
+                ? null : Bukkit.getPlayer(request.playerName());
+        if (request.playerName() != null && player == null) {
+            MessagesCore.NOTONLINE.send(sender, request.playerName());
+            return;
+        }
+        sendPersonalizedWorldInfo(sender, world, player, label, args);
+    }
+
+    private void executePlayerInfo(
+            CommandSender sender, String label, String[] args,
+            InfoCommandRequest request) {
+        Player player = request.playerName() == null
+                ? null : Bukkit.getPlayer(request.playerName());
+        if (player == null) {
+            MessagesCore.NOTONLINE.send(
+                    sender, request.playerName() == null ? "NULL" : request.playerName());
+            return;
+        }
+        sendPersonalizedWorldInfo(sender, null, player, label, args);
+    }
+
+    private void sendPersonalizedWorldInfo(
+            CommandSender requester, World world, Player viewedPlayer,
+            String label, String[] args) {
+        if (viewedPlayer == null || viewedPlayer == requester) {
+            World selectedWorld = world != null ? world : viewedPlayer.getWorld();
+            sendInfoWorld(
+                    requester, infoGetWorld(requester, selectedWorld, viewedPlayer, null), label, args);
+            return;
+        }
+        String viewedPlayerName = viewedPlayer.getName();
+        AsyncHandler.syncAtEntity(viewedPlayer, () -> {
+            World selectedWorld = world != null ? world : viewedPlayer.getWorld();
+            List<String> info = infoGetWorld(
+                    viewedPlayer, selectedWorld, viewedPlayer, null);
+            sendInfoWorld(requester, info, label, args);
+        }, () -> MessagesCore.NOTONLINE.send(requester, viewedPlayerName));
     }
 
     //Particles
@@ -109,15 +119,17 @@ public class CmdInfo implements RTPCommand, RTPCommandHelpable {
         List<String> info = new ArrayList<>();
         // BetterRTP pl = BetterRTP.getInstance();
 
-        for (ParticleEffect eff : ParticleEffect.VALUES) {
+        for (Particle eff : Particle.values()) {
+            if (eff.getDataType() != Void.class) {
+                continue;
+            }
             if (info.isEmpty() || info.size() % 2 == 0) {
                 info.add("&7" + eff.name() + "&r");
             } else
                 info.add("&f" + eff.name() + "&r");
         }
 
-        info.forEach(str ->
-                info.set(info.indexOf(str), Message.color(str)));
+        info.replaceAll(Message::color);
         sendi.sendMessage(info.toString());
     }
 
@@ -132,43 +144,53 @@ public class CmdInfo implements RTPCommand, RTPCommandHelpable {
                 info.add("&f" + shape + "&r");
         }
 
-        info.forEach(str ->
-                info.set(info.indexOf(str), Message.color(str)));
+        info.replaceAll(Message::color);
         sendi.sendMessage(info.toString());
     }
 
     //World
     public static void sendInfoWorld(CommandSender sendi, List<String> list, String label, String[] args) { //Send info
+        List<String> output = new ArrayList<>(list);
+        String[] commandArgs = args.clone();
+        AsyncHandler.syncAtSender(
+                sendi, () -> sendInfoWorldNow(sendi, output, label, commandArgs));
+    }
+
+    private static void sendInfoWorldNow(
+            CommandSender sendi, List<String> list, String label, String[] args) {
         boolean upload = Arrays.asList(args).contains("_UPLOAD_");
         list.add(0, "&e&m-----&6 BetterRTP &8| Info &e&m-----");
-        list.forEach(str -> list.set(list.indexOf(str), Message.color(str)));
+        list.replaceAll(Message::color);
 
         String cmd = "/" + label + " " + String.join(" ", args);
         if (!upload) {
             sendi.sendMessage(list.toArray(new String[0]));
             if (sendi instanceof Player) {
-                TextComponent component = new TextComponent(Message.color("&7- &7Click to upload command log to &flogs.ronanplugins.com"));
-                component.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, cmd + " _UPLOAD_"));
-                component.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ComponentBuilder(Message.color("&6Suggested command&f: &7" + "/betterrtp " + String.join(" ", args) + " _UPLOAD_")).create()));
-                ((Player) sendi).spigot().sendMessage(component);
+                Component component = Message.component("&7- &7Click to upload command log to &flogs.ronanplugins.com")
+                        .clickEvent(ClickEvent.suggestCommand(cmd + " _UPLOAD_"))
+                        .hoverEvent(HoverEvent.showText(Message.component("&6Suggested command&f: &7"
+                                + "/betterrtp " + String.join(" ", args) + " _UPLOAD_")));
+                sendi.sendMessage(component);
             } else {
                 sendi.sendMessage("Execute `" + cmd + " _UPLOAD_`" + " to upload command log to https://logs.ronanplugins.com");
             }
         } else {
             list.add(0, "Command: " + cmd);
-            list.forEach(str -> list.set(list.indexOf(str), ChatColor.stripColor(str)));
-            CompletableFuture.runAsync(() -> {
-                String key = LogUploader.post(list);
-                if (key == null) {
-                    Message.sms(sendi, new ArrayList<>(Collections.singletonList("&cAn error occured attempting to upload log!")), null);
-                } else {
-                    try {
-                        JSONObject json = (JSONObject) new JSONParser().parse(key);
-                        Message.sms(sendi, Arrays.asList(" ", Message.getPrefix(Message_RTP.msg) + "&aLog uploaded! &fView&7: &6https://logs.ronanplugins.com/" + json.get("key")), null);
-                    } catch (ParseException e) {
-                        throw new RuntimeException(e);
+            list.replaceAll(Message::stripColor);
+            AsyncHandler.async(() -> {
+                LogUploadResult result = LogUploadResult.parse(LogUploader.post(list));
+                AsyncHandler.syncAtSender(sendi, () -> {
+                    if (result.successful()) {
+                        Message.sms(sendi, Arrays.asList(" ",
+                                Message.getPrefix(Message_RTP.msg)
+                                        + "&aLog uploaded! &fView&7: &6https://logs.ronanplugins.com/"
+                                        + result.key()), null);
+                    } else {
+                        BetterRTP.getInstance().getLogger().warning(result.error());
+                        Message.sms(sendi, new ArrayList<>(Collections.singletonList(
+                                "&cAn error occured attempting to upload log!")), null);
                     }
-                }
+                });
             });
         }
     }
@@ -199,7 +221,8 @@ public class CmdInfo implements RTPCommand, RTPCommandHelpable {
             if (_rtpworld == null)
                 _rtpworld = HelperRTP.getPlayerWorld(new RTPSetupInformation(world, player != null ? player : sendi, player, player != null));
             WorldDefault worldDefault = BetterRTP.getInstance().getRTP().getRTPdefaultWorld();
-            info.add("&7- &eSetup Type&7: " + _rtpworld.setup_type.name() + getInfo(_rtpworld, worldDefault, "setup"));
+            info.add("&7- &eSetup Type&7: " + _rtpworld.getSetupType().name()
+                    + getInfo(_rtpworld, worldDefault, "setup"));
             info.add("&7- &6Use World Border&7: " + (_rtpworld.getUseWorldborder() ? _true : _false));
             info.add("&7- &eWorld Type&7: &f" + _rtpworld.getWorldtype().name());
             info.add("&7- &6Center X&7: &f" + _rtpworld.getCenterX() + getInfo(_rtpworld, worldDefault, "centerx"));
@@ -213,7 +236,8 @@ public class CmdInfo implements RTPCommand, RTPCommandHelpable {
             info.add("&7- &6Biomes&7: &f" + _rtpworld.getBiomes().toString());
             info.add("&7- &eShape&7: &f" + _rtpworld.getShape().toString() + getInfo(_rtpworld, worldDefault, "shape"));
             info.add("&7- &6Permission Group&7: " + (_rtpworld.getConfig() != null ? "&a" + _rtpworld.getConfig().getGroupName() : "&cN/A"));
-            info.add("&7- &eQueue Available&7: " + (QueueHandler.isEnabled() ? QueueHandler.getApplicableAsync(_rtpworld).size() : "&cDisabled"));
+            info.add("&7- &eQueue enabled&7: "
+                    + (BetterRTP.getInstance().getQueue().enabled() ? _true : _false));
         }
         return info;
     }
@@ -237,7 +261,8 @@ public class CmdInfo implements RTPCommand, RTPCommandHelpable {
             case "shape":
                 return worldPlayer.getShape() == worldDefault.getShape() ? " &8(default)" : "";
             case "setup":
-                return worldPlayer.setup_type == RTP_SETUP_TYPE.LOCATION ? " &7(" + worldPlayer.setup_name + ")" : "";
+                return worldPlayer.getSetupType() == RTP_SETUP_TYPE.LOCATION
+                        ? " &7(" + worldPlayer.getSetupName() + ")" : "";
             case "cooldown":
                 return worldPlayer.getPlayer() != null ? PermissionNode.BYPASS_COOLDOWN.check(worldPlayer.getPlayer()) ? " &8(bypassing)" : "" : " &cN/A";
         }
@@ -248,37 +273,40 @@ public class CmdInfo implements RTPCommand, RTPCommandHelpable {
     private void infoEffects(CommandSender sendi) {
         List<String> info = new ArrayList<>();
 
-        for (PotionEffectType effect : PotionEffectType.values()) {
+        for (PotionEffectType effect : PotionEffectHelper.stream().toList()) {
+            String effectName = PotionEffectHelper.name(effect);
             if (info.isEmpty() || info.size() % 2 == 0) {
-                info.add("&7" + effect.getName() + "&r");
+                info.add("&7" + effectName + "&r");
             } else
-                info.add("&f" + effect.getName() + "&r");
+                info.add("&f" + effectName + "&r");
         }
 
-        info.forEach(str ->
-                info.set(info.indexOf(str), Message.color(str)));
+        info.replaceAll(Message::color);
         sendi.sendMessage(info.toString());
     }
 
     public List<String> tabComplete(CommandSender sendi, String[] args) {
         List<String> info = new ArrayList<>();
         if (args.length == 2) {
-            for (CmdInfoSub cmd : CmdInfoSub.values())
+            for (InfoCommandRequest.Subcommand cmd :
+                    InfoCommandRequest.Subcommand.values())
+                if (cmd != InfoCommandRequest.Subcommand.OVERVIEW
+                        && cmd != InfoCommandRequest.Subcommand.UNKNOWN)
                 if (cmd.name().toLowerCase().startsWith(args[1].toLowerCase()))
                     info.add(cmd.name().toLowerCase());
         } else if (args.length == 3) {
-            if (CmdInfoSub.WORLD.name().toLowerCase().startsWith(args[1].toLowerCase())) {
+            if (InfoCommandRequest.Subcommand.WORLD.name().toLowerCase().startsWith(args[1].toLowerCase())) {
                 for (World world : Bukkit.getWorlds())
                     if (world.getName().toLowerCase().startsWith(args[2].toLowerCase()))
                         info.add(world.getName());
-            } else if (CmdInfoSub.PLAYER.name().toLowerCase().startsWith(args[1].toLowerCase())) {
+            } else if (InfoCommandRequest.Subcommand.PLAYER.name().toLowerCase().startsWith(args[1].toLowerCase())) {
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     if (p.getName().toLowerCase().startsWith(args[2].toLowerCase()))
                         info.add(p.getName());
                 }
             }
         } else if (args.length == 4) {
-            if (CmdInfoSub.WORLD.name().toLowerCase().startsWith(args[1].toLowerCase())) {
+            if (InfoCommandRequest.Subcommand.WORLD.name().toLowerCase().startsWith(args[1].toLowerCase())) {
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     if (p.getName().toLowerCase().startsWith(args[3].toLowerCase()))
                         info.add(p.getName());

@@ -3,7 +3,6 @@ package me.SuperRonanCraft.BetterRTP.references.helpers;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.bukkit.block.Biome;
 import org.bukkit.command.CommandSender;
 
 import me.SuperRonanCraft.BetterRTP.references.PermissionNode;
@@ -18,9 +17,10 @@ public class HelperRTP_Info {
         if (PermissionNode.BIOME.check(sendi))
             for (int i = start; i < args.length; i++) {
                 String str = args[i];
-                try {
-                    biomes.add(Biome.valueOf(str.replaceAll(",", "").toUpperCase()).name());
-                } catch (Exception e) {
+                var biome = BiomeHelper.find(str);
+                if (biome != null) {
+                    biomes.add(BiomeHelper.name(biome));
+                } else {
                     if (!error_sent) {
                         MessagesCore.OTHER_BIOME.send(sendi, str);
                         error_sent = true;
@@ -31,13 +31,11 @@ public class HelperRTP_Info {
     }
 
     public static void addBiomes(List<String> list, String[] args) {
-        try {
-            for (Biome b : Biome.values())
-                if (b.name().toUpperCase().replaceAll("minecraft:", "").startsWith(args[args.length - 1].toUpperCase()))
-                    list.add(b.name().replaceAll("minecraft:", ""));
-        } catch (NoSuchMethodError e) {
-            //Not in 1.14.X
-        }
+        String prefix = args[args.length - 1].toUpperCase();
+        BiomeHelper.stream()
+                .map(BiomeHelper::name)
+                .filter(name -> name.startsWith(prefix))
+                .forEach(list::add);
     }
 
 }

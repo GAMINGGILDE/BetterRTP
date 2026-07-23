@@ -5,7 +5,9 @@ import lombok.NonNull;
 import me.SuperRonanCraft.BetterRTP.references.file.FileData;
 import me.SuperRonanCraft.BetterRTP.references.messages.placeholder.PlaceholderAnalyzer;
 import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.command.CommandSender;
 import org.jetbrains.annotations.Nullable;
 
@@ -18,29 +20,41 @@ import java.util.regex.Pattern;
 
 public interface Message {
 
+    LegacyComponentSerializer AMPERSAND_SERIALIZER = LegacyComponentSerializer.builder()
+            .character(LegacyComponentSerializer.AMPERSAND_CHAR)
+            .hexColors()
+            .useUnusualXRepeatedCharacterHexFormat()
+            .build();
+    LegacyComponentSerializer SECTION_SERIALIZER = LegacyComponentSerializer.builder()
+            .character(LegacyComponentSerializer.SECTION_CHAR)
+            .hexColors()
+            .useUnusualXRepeatedCharacterHexFormat()
+            .build();
+    PlainTextComponentSerializer PLAIN_SERIALIZER = PlainTextComponentSerializer.plainText();
+
     FileData lang();
 
     static void sms(Message messenger, CommandSender sendi, String msg) {
         if (!msg.isEmpty())
-            AsyncHandler.sync(() ->
+            AsyncHandler.syncAtSender(sendi, () ->
                     sendi.sendMessage(placeholder(sendi, getPrefix(messenger) + msg)));
     }
 
     static void sms(Message messenger, CommandSender sendi, String msg, Object placeholderInfo) {
         if (!msg.isEmpty())
-            AsyncHandler.sync(() ->
+            AsyncHandler.syncAtSender(sendi, () ->
                     sendi.sendMessage(Objects.requireNonNull(placeholder(sendi, getPrefix(messenger) + msg, placeholderInfo))));
     }
 
     static void sms(Message messenger, CommandSender sendi, String msg, List<Object> placeholderInfo) {
         if (!msg.isEmpty())
-            AsyncHandler.sync(() ->
+            AsyncHandler.syncAtSender(sendi, () ->
                     sendi.sendMessage(placeholder(sendi, getPrefix(messenger) + msg, placeholderInfo)));
     }
 
     static void sms(CommandSender sendi, List<String> msg, Object placeholderInfo) {
         if (msg != null && !msg.isEmpty()) {
-            AsyncHandler.sync(() -> {
+            AsyncHandler.syncAtSender(sendi, () -> {
                 msg.forEach(str -> msg.set(msg.indexOf(str), placeholder(sendi, str, placeholderInfo)));
                 sendi.sendMessage(msg.toArray(new String[0]));
             });
@@ -118,12 +132,24 @@ public interface Message {
     }
 
     static String color(String str) {
-        return translateHexColorCodes(str);
+        return SECTION_SERIALIZER.serialize(component(str));
+    }
+
+    static Component component(String str) {
+        return AMPERSAND_SERIALIZER.deserialize(expandHexColorCodes(str));
+    }
+
+    static String plain(Component component) {
+        return PLAIN_SERIALIZER.serialize(component);
+    }
+
+    static String stripColor(String str) {
+        return plain(SECTION_SERIALIZER.deserialize(str));
     }
 
     //Thank you to zwrumpy on Spigot! (https://www.spigotmc.org/threads/hex-color-code-translate.449748/#post-4270781)
     //Supports 1.8 to 1.18
-    static String translateHexColorCodes(String message) {
+    private static String expandHexColorCodes(String message) {
         Pattern pattern = Pattern.compile("#[a-fA-F0-9]{6}");
         Matcher matcher = pattern.matcher(message);
         while (matcher.find()) {
@@ -139,6 +165,6 @@ public interface Message {
             message = message.replace(hexCode, builder.toString());
             matcher = pattern.matcher(message);
         }
-        return ChatColor.translateAlternateColorCodes('&', message);
+        return message;
     }
 }

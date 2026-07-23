@@ -6,14 +6,13 @@ import me.SuperRonanCraft.BetterRTP.references.file.FileOther;
 import me.SuperRonanCraft.BetterRTP.references.messages.Message_RTP;
 import me.SuperRonanCraft.BetterRTP.references.messages.MessagesCore;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WORLD_TYPE;
+import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Locale;
 
 public class HelperRTP_EditWorlds {
 
@@ -33,8 +32,10 @@ public class HelperRTP_EditWorlds {
         Object value;
         try {
             value = cmd.getResult(val);
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (RuntimeException exception) {
+            BetterRTP.getInstance().getLogger().log(
+                    java.util.logging.Level.WARNING,
+                    "Unable to parse edited default-world value '" + val + "'", exception);
             MessagesCore.EDIT_ERROR.send(sendi);
             return false;
         }
@@ -43,49 +44,23 @@ public class HelperRTP_EditWorlds {
             MessagesCore.EDIT_ERROR.send(sendi);
             return false;
         }
-        YamlConfiguration config = file.getConfig();
-
-        List<Map<?, ?>> map = config.getMapList(path);
-        boolean found = false;
-        for (Map<?, ?> m : map) {
-            if (m.keySet().toArray()[0].equals(field)) {
-                found = true;
-                for (Object map2 : m.values()) {
-                    Map<Object, Object> values = (Map<Object, Object>) map2;
-                    values.put(cmd.get(), value);
-                    Message_RTP.sms(sendi,
-                            MessagesCore.EDIT_SET.get(sendi, null)
-                                    .replace("%type%", cmd.get())
-                                    .replace("%value%", val));
-                }
-                break;
-            }
-        }
-        if (!found) {
-            Map<Object, Object> map2 = new HashMap<>();
-            Map<Object, Object> values = new HashMap<>();
-            values.put(cmd.get(), value);
-            map2.put(field, values);
-            map.add(map2);
-        }
-
-        config.set(path, map);
-
-        try {
-            config.save(file.getFile());
-            return true;
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return false;
+        file.setValue(path + "." + field + "." + cmd.get(), value);
+        file.save();
+        Message_RTP.sms(sendi,
+                MessagesCore.EDIT_SET.get(sendi, null)
+                        .replace("%type%", cmd.get())
+                        .replace("%value%", val));
+        return true;
     }
 
     public static void editPermissionGroup(CommandSender sendi, CmdEdit.RTP_CMD_EDIT_SUB cmd, String group, String world, String val) {
         Object value;
         try {
             value = cmd.getResult(val);
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (RuntimeException exception) {
+            BetterRTP.getInstance().getLogger().log(
+                    java.util.logging.Level.WARNING,
+                    "Unable to parse edited custom-world value '" + val + "'", exception);
             MessagesCore.EDIT_ERROR.send(sendi);
             return;
         }
@@ -95,60 +70,24 @@ public class HelperRTP_EditWorlds {
             return;
         }
 
-        String path = "PermissionGroup.Groups";
         FileOther.FILETYPE file = FileOther.FILETYPE.CONFIG;
-        YamlConfiguration config = file.getConfig();
-
-        List<Map<?, ?>> map = config.getMapList(path);
-        for (Map<?, ?> m : map)
-            for (Map.Entry<?, ?> entry : m.entrySet()) {
-                String _group = entry.getKey().toString();
-                if (_group.equals(group)) {
-                    BetterRTP.getInstance().getLogger().info("Group: " + group);
-                    Object _value = entry.getValue();
-                    for (Object worldList : ((ArrayList) _value)) {
-                        BetterRTP.getInstance().getLogger().info("World: " + worldList.toString());
-                        for (Object hash : ((HashMap) worldList).entrySet()) {
-                            Map.Entry worldFields = (Map.Entry) hash;
-                            BetterRTP.getInstance().getLogger().info("Hash: " + hash);
-                            if (world.equals(worldFields.getKey().toString())) {
-                                Map<Object, Object> values = (Map<Object, Object>) worldFields.getValue();
-                                values.put(cmd.get(), value);
-                                Message_RTP.sms(sendi,
-                                        MessagesCore.EDIT_SET.get(sendi, null)
-                                                .replace("%type%", cmd.get())
-                                                .replace("%value%", val));
-                            }
-                        }
-                    }
-                }
-            }
-        /*if (!found) {
-            Map<Object, Object> map2 = new HashMap<>();
-            Map<Object, Object> values = new HashMap<>();
-            values.put(cmd.get(), value);
-            map2.put(world, values);
-            map.add(map2);
-        }*/
-        //if (!found)
-        //    return;
-
-        config.set(path, map);
-
-        try {
-            config.save(file.getFile());
-            BetterRTP.getInstance().getRTP().loadPermissionGroups();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        file.setValue("PermissionGroup.Groups." + group + "." + world + "." + cmd.get(), value);
+        file.save();
+        Message_RTP.sms(sendi,
+                MessagesCore.EDIT_SET.get(sendi, null)
+                        .replace("%type%", cmd.get())
+                        .replace("%value%", val));
+        BetterRTP.getInstance().getRTP().loadPermissionGroups();
     }
 
     public static void editDefault(CommandSender sendi, CmdEdit.RTP_CMD_EDIT_SUB cmd, String val) {
         Object value;
         try {
             value = cmd.getResult(val);
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (RuntimeException exception) {
+            BetterRTP.getInstance().getLogger().log(
+                    java.util.logging.Level.WARNING,
+                    "Unable to parse edited location value '" + val + "'", exception);
             MessagesCore.EDIT_ERROR.send(sendi);
             return;
         }
@@ -163,96 +102,59 @@ public class HelperRTP_EditWorlds {
 
         config.set("Default." + cmd.get(), value);
 
-        try {
-            config.save(file.getFile());
-            BetterRTP.getInstance().getRTP().loadWorlds();
-            Message_RTP.sms(sendi,
-                    MessagesCore.EDIT_SET.get(sendi, null)
-                            .replace("%type%", cmd.get())
-                            .replace("%value%", val));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        file.save();
+        BetterRTP.getInstance().getRTP().loadWorlds();
+        Message_RTP.sms(sendi,
+                MessagesCore.EDIT_SET.get(sendi, null)
+                        .replace("%type%", cmd.get())
+                        .replace("%value%", val));
     }
 
     public static void editWorldtype(CommandSender sendi, String world, String val) {
         //sendi.sendMessage("Editting worldtype for world " + world + " to " + val);
         WORLD_TYPE type;
         try {
-            type = WORLD_TYPE.valueOf(val.toUpperCase());
-        } catch (Exception e) {
-            //e.printStackTrace();
+            type = WORLD_TYPE.valueOf(val.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
             MessagesCore.EDIT_ERROR.send(sendi);
             return;
         }
 
         FileOther.FILETYPE file = FileOther.FILETYPE.CONFIG;
-        YamlConfiguration config = file.getConfig();
-
-        List<Map<?, ?>> world_map = config.getMapList("WorldType");
-        List<Map<?, ?>> removeList = new ArrayList<>();
-        for (Map<?, ?> m : world_map) {
-            for (Map.Entry<?, ?> entry : m.entrySet()) {
-                if (entry.getKey().equals(world))
-                    removeList.add(m);
-            }
-        }
-        for (Map<?, ?> o : removeList)
-            world_map.remove(o);
-        Map<String, String> newIndex = new HashMap<>();
-        newIndex.put(world, type.name());
-        world_map.add(newIndex);
-        config.set("WorldType", world_map);
-
-        try {
-            config.save(file.getFile());
-            BetterRTP.getInstance().getRTP().load();
-            Message_RTP.sms(sendi,
-                    MessagesCore.EDIT_SET.get(sendi, null)
-                            .replace("%type%", CmdEdit.RTP_CMD_EDIT.WORLD_TYPE.name())
-                            .replace("%value%", val));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        file.setValue("WorldType." + world, type.name());
+        file.save();
+        BetterRTP.getInstance().getRTP().load();
+        Message_RTP.sms(sendi,
+                MessagesCore.EDIT_SET.get(sendi, null)
+                        .replace("%type%", CmdEdit.RTP_CMD_EDIT.WORLD_TYPE.name())
+                        .replace("%value%", val));
     }
 
     public static void editOverride(CommandSender sendi, String world, String val) {
 
         FileOther.FILETYPE file = FileOther.FILETYPE.CONFIG;
-        YamlConfiguration config = file.getConfig();
-
-        List<Map<?, ?>> world_map = config.getMapList("Overrides");
-        List<Map<?, ?>> removeList = new ArrayList<>();
-        for (Map<?, ?> m : world_map) {
-            for (Map.Entry<?, ?> entry : m.entrySet()) {
-                if (entry.getKey().equals(world))
-                    removeList.add(m);
-            }
-        }
-        for (Map<?, ?> o : removeList)
-            world_map.remove(o);
         if (!val.equals("REMOVE_OVERRIDE")) {
-            Map<String, String> newIndex = new HashMap<>();
-            newIndex.put(world, val);
-            world_map.add(newIndex);
+            file.setValue("Overrides." + world, val);
         } else {
+            file.setValue("Overrides." + world, null);
             val = "(removed override)";
         }
-        config.set("Overrides", world_map);
-
-        try {
-            config.save(file.getFile());
-            BetterRTP.getInstance().getRTP().load();
-            Message_RTP.sms(sendi,
-                    MessagesCore.EDIT_SET.get(sendi, null)
-                            .replace("%type%", CmdEdit.RTP_CMD_EDIT.OVERRIDE.name())
-                            .replace("%value%", val));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        file.save();
+        BetterRTP.getInstance().getRTP().load();
+        Message_RTP.sms(sendi,
+                MessagesCore.EDIT_SET.get(sendi, null)
+                        .replace("%type%", CmdEdit.RTP_CMD_EDIT.OVERRIDE.name())
+                        .replace("%value%", val));
     }
 
     public static void editBlacklisted(CommandSender sendi, String block, boolean add) {
+
+        Material material = Material.matchMaterial(block);
+        if (material == null || !material.isBlock()) {
+            MessagesCore.EDIT_ERROR.send(sendi);
+            return;
+        }
+        block = material.name();
 
         FileOther.FILETYPE file = FileOther.FILETYPE.CONFIG;
         YamlConfiguration config = file.getConfig();
@@ -260,7 +162,7 @@ public class HelperRTP_EditWorlds {
         List<String> world_map = config.getStringList("BlacklistedBlocks");
         List<String> removeList = new ArrayList<>();
         for (String m : world_map) {
-            if (m.equals(block)) {
+            if (m.equalsIgnoreCase(block)) {
                 removeList.add(m);
             }
         }
@@ -273,16 +175,12 @@ public class HelperRTP_EditWorlds {
         }
         config.set("BlacklistedBlocks", world_map);
 
-        try {
-            config.save(file.getFile());
-            BetterRTP.getInstance().getRTP().load();
-            Message_RTP.sms(sendi,
-                    MessagesCore.EDIT_SET.get(sendi, null)
-                            .replace("%type%", CmdEdit.RTP_CMD_EDIT.BLACKLISTEDBLOCKS.name())
-                            .replace("%value%", block));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        file.save();
+        BetterRTP.getInstance().getRTP().load();
+        Message_RTP.sms(sendi,
+                MessagesCore.EDIT_SET.get(sendi, null)
+                        .replace("%type%", CmdEdit.RTP_CMD_EDIT.BLACKLISTEDBLOCKS.name())
+                        .replace("%value%", block));
     }
 
 }

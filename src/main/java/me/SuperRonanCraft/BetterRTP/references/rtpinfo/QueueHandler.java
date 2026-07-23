@@ -1,6 +1,7 @@
 package me.SuperRonanCraft.BetterRTP.references.rtpinfo;
 
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
+import me.SuperRonanCraft.BetterRTP.player.rtp.RTP_SHAPE;
 import me.SuperRonanCraft.BetterRTP.references.customEvents.RTP_TeleportPostEvent;
 import me.SuperRonanCraft.BetterRTP.references.database.DatabaseHandler;
 import me.SuperRonanCraft.BetterRTP.references.database.DatabaseQueue;
@@ -11,18 +12,58 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.PluginManager;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.Random;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.IntSupplier;
+import java.util.function.Supplier;
+import java.util.logging.Logger;
+import me.SuperRonanCraft.BetterRTP.player.rtp.RTP;
+import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WORLD_TYPE;
+import org.bukkit.World;
 
 public class QueueHandler implements Listener { //Randomly queues up some safe locations
 
-    boolean loaded = false;
-    private final QueueGenerator generator = new QueueGenerator();
+    private final QueueService service;
+    private final QueueGenerator generator;
+    private final Consumer<String> debug;
 
+    @Deprecated(forRemoval = false)
+    public QueueHandler() {
+        this(
+                () -> BetterRTP.getInstance().getSettings().isQueueEnabled(),
+                DatabaseHandler.getQueue());
+    }
+
+    public QueueHandler(BooleanSupplier enabled, QueueRepository repository) {
+        service = new QueueService(repository, enabled);
+        generator = new QueueGenerator(service);
+        debug = BetterRTP::debug;
+    }
+
+    public QueueHandler(
+            BooleanSupplier enabled,
+            QueueRepository repository,
+            Supplier<RTP> rtp,
+            IntSupplier chunkLoadTimeoutSeconds,
+            Supplier<Logger> logger,
+            Function<World, WORLD_TYPE> worldType,
+            Consumer<String> debug) {
+        service = new QueueService(repository, enabled);
+        generator = new QueueGenerator(
+                service, rtp, chunkLoadTimeoutSeconds, logger, worldType, debug);
+        this.debug = debug;
+    }
+
+    /** @deprecated Use the plugin's {@link QueueHandler} instance. */
+    @Deprecated(forRemoval = false)
     public static boolean isEnabled() {
-        return BetterRTP.getInstance().getSettings().isQueueEnabled();
+        return BetterRTP.getInstance().getQueue().service.isEnabled();
+    }
+
+    public boolean enabled() {
+        return service.isEnabled();
     }
 
     public void registerEvents(BetterRTP pl) {
@@ -35,83 +76,82 @@ public class QueueHandler implements Listener { //Randomly queues up some safe l
     }
 
     public void load() {
-        loaded = false;
         generator.load();
     }
 
     @EventHandler
     public void onRTP(RTP_TeleportPostEvent e) {
         //Delete previously used location
-        remove(e.getLocation());
+        removeQueued(e.getLocation());
     }
 
-    public static QueueData getRandomAsync(RTPWorld rtpWorld) {
-        List<QueueData> queueData = getApplicableAsync(rtpWorld);
-        if (queueData.size() <= QueueGenerator.queueMin && !BetterRTP.getInstance().getQueue().generator.generating)
-            BetterRTP.getInstance().getQueue().generator.generate(rtpWorld);
-        if (!queueData.isEmpty()) {
-            QueueData randomQueue = queueData.get(new Random().nextInt(queueData.size()));
-            queueData.clear();
-            return randomQueue;
+    public QueueData claimRandom(RTPWorld world, QueueRange range) {
+        List<QueueData> candidates = service.applicable(world, range);
+        if (candidates.size() <= QueueLimits.REFILL_THRESHOLD) {
+            generator.generate(world, range);
         }
-        return null;
+        return QueueSelection.claimFirst(candidates, service::claim);
     }
 
-    public static List<QueueData> getApplicableAsync(RTPWorld rtpWorld) {
-        List<QueueData> available = new ArrayList<>();
-        //Is Enabled??
-        if (!isEnabled()) return available;
-        List<QueueData> queueData = DatabaseHandler.getQueue().getInRange(new DatabaseQueue.QueueRangeData(rtpWorld));
-        for (QueueData data : queueData) {
-            if (!Objects.equals(data.getLocation().getWorld().getName(), rtpWorld.getWorld().getName()))
-                continue;
-            switch (rtpWorld.getShape()) {
-                case CIRCLE:
-                    if (isInCircle(data.location, rtpWorld))
-                        available.add(data);
-                    break;
-                case SQUARE:
-                default:
-                    if (isInSquare(data.location, rtpWorld))
-                        available.add(data);
-            }
-        }
-
-        //BetterRTP.getInstance().getLogger().info("Centerx " + rtpWorld.getCenterX());
-        //BetterRTP.getInstance().getLogger().info("Available: " + available.size());
-        return available;
+    public List<QueueData> applicable(RTPWorld world, QueueRange range) {
+        return service.applicable(world, range);
     }
 
-    public static void remove(Location loc) {
-        if (!isEnabled()) return;
+    public void removeQueued(Location location) {
+        if (!service.isEnabled()) return;
+        QueuePosition position = QueuePosition.capture(location);
         AsyncHandler.async(() -> {
-            //Delete all queue data async
-            if (DatabaseHandler.getQueue().removeLocation(loc)) {
-                //BetterRTP.getInstance().getQueue().queueList.remove(data);
-                BetterRTP.debug("-Removed a queue " + loc);
+            if (service.remove(position)) {
+                debug.accept("-Removed a queue world=" + position.worldName()
+                        + ", x=" + position.blockX() + ", z=" + position.blockZ());
             }
         });
     }
 
+    public QueueRange range(RTPWorld world) {
+        return QueueRange.from(world);
+    }
+
+    /** @deprecated Use {@link #claimRandom(RTPWorld, QueueRange)}. */
+    @Deprecated(forRemoval = false)
+    public static QueueData getRandomAsync(RTPWorld rtpWorld, DatabaseQueue.QueueRangeData range) {
+        return BetterRTP.getInstance().getQueue().claimRandom(rtpWorld, range.toRange());
+    }
+
+    public static QueueData getRandomAsync(RTPWorld rtpWorld, QueueRange range) {
+        return BetterRTP.getInstance().getQueue().claimRandom(rtpWorld, range);
+    }
+
+    /** @deprecated Use {@link #applicable(RTPWorld, QueueRange)}. */
+    @Deprecated(forRemoval = false)
+    public static List<QueueData> getApplicableAsync(
+            RTPWorld rtpWorld, DatabaseQueue.QueueRangeData range) {
+        return BetterRTP.getInstance().getQueue().applicable(rtpWorld, range.toRange());
+    }
+
+    /** @deprecated Use {@link #removeQueued(Location)}. */
+    @Deprecated(forRemoval = false)
+    public static void remove(Location loc) {
+        BetterRTP.getInstance().getQueue().removeQueued(loc);
+    }
+
     public static boolean isInCircle(Location loc, RTPWorld rtpWorld) {
-        int center_x = rtpWorld.getCenterX();
-        int center_z = rtpWorld.getCenterZ();
-        int radius = rtpWorld.getMaxRadius();
-        int radius_min = rtpWorld.getMinRadius();
-        int x = loc.getBlockX();
-        int z = loc.getBlockZ();
-        int square_dist = (center_x - x) * 2 + (center_z - z) * 2;
-        return square_dist <= radius * 2 && square_dist >= radius_min * 2;
+        return area(rtpWorld, RTP_SHAPE.CIRCLE).contains(loc.getBlockX(), loc.getBlockZ());
     }
 
     public static boolean isInSquare(Location loc, RTPWorld rtpWorld) {
-        int radius_max = rtpWorld.getMaxRadius();
-        int radius_min = rtpWorld.getMinRadius();
-        int x = loc.getBlockX() - rtpWorld.getCenterX();
-        int z = loc.getBlockZ() - rtpWorld.getCenterZ();
-        return ((Math.abs(x)>=radius_min || Math.abs(z)>=radius_min) && (Math.abs(x) <= radius_max && Math.abs(z) <= radius_max));
-        // Returns true if the x or z coordinate is above the MinRadius and if they are both under the MaxRadius. Returns false otherwise.
-        // (All locations provided should be below the MaxRadius anyway, but I put it in just in-case.)
+        return area(rtpWorld, RTP_SHAPE.SQUARE).contains(loc.getBlockX(), loc.getBlockZ());
+    }
+
+    /** @deprecated Use {@link QueueRange#from(RTPWorld)}. */
+    @Deprecated(forRemoval = false)
+    public static DatabaseQueue.QueueRangeData snapshot(RTPWorld world) {
+        return new DatabaseQueue.QueueRangeData(world);
+    }
+
+    private static RtpArea area(RTPWorld world, RTP_SHAPE shape) {
+        return new RtpArea(world.getCenterX(), world.getCenterZ(),
+                world.getMinRadius(), world.getMaxRadius(), shape);
     }
 }
 

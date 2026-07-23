@@ -1,398 +1,97 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
-    <groupId>me.SuperRonanCraft</groupId>
+    <groupId>de.gaminggilde</groupId>
     <artifactId>BetterRTP</artifactId>
+    <version>4.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
-    <version>3.7</version>
     <name>BetterRTP</name>
-    <description>Random teleportation for Spigot, Paper and Folia Minecraft servers.</description>
+    <description>Random teleportation for modern Paper and Folia servers.</description>
     <url>https://github.com/GAMINGGILDE/BetterRTP</url>
 
     <developers>
-        <developer>
-            <name>SuperRonanCraft</name>
-        </developer>
-        <developer>
-            <name>Christian F</name>
-            <url>https://github.com/CFPlusPlus</url>
-        </developer>
+        <developer><name>SuperRonanCraft</name></developer>
+        <developer><name>Christian F</name><url>https://github.com/CFPlusPlus</url></developer>
     </developers>
 
-    <!-- Upload patches to https://repo.ronanplugins.com/#/ -->
-
     <properties>
-        <maven.compiler.release>8</maven.compiler.release>
+        <maven.compiler.release>25</maven.compiler.release>
+        <paper.version>26.1.2.build.74-stable</paper.version>
         <lombok.version>1.18.46</lombok.version>
+        <junit.version>6.0.3</junit.version>
+        <sqlite-jdbc.version>3.53.2.0</sqlite-jdbc.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.build.outputTimestamp>2026-01-01T00:00:00Z</project.build.outputTimestamp>
     </properties>
 
-    <profiles>
-        <profile>
-            <id>dev</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <!-- Local Server Building -->
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-jar-plugin</artifactId>
-                        <version>3.4.2</version>
-                        <configuration>
-                            <outputDirectory>../../Java/plugins</outputDirectory>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
+    <repositories>
+        <repository><id>papermc</id><url>https://repo.papermc.io/repository/maven-public/</url></repository>
+        <repository><id>jitpack.io</id><url>https://jitpack.io</url></repository>
+        <repository><id>vault-repo</id><url>https://nexus.hc.to/content/repositories/pub_releases</url></repository>
+        <repository><id>enginehub</id><url>https://maven.enginehub.org/repo/</url></repository>
+        <repository><id>placeholderapi</id><url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url></repository>
+    </repositories>
+
+    <dependencies>
+        <dependency><groupId>io.papermc.paper</groupId><artifactId>paper-api</artifactId><version>${paper.version}</version><scope>provided</scope></dependency>
+        <dependency><groupId>net.milkbowl.vault</groupId><artifactId>VaultAPI</artifactId><version>1.7</version><scope>provided</scope></dependency>
+        <dependency><groupId>com.sk89q.worldguard</groupId><artifactId>worldguard-bukkit</artifactId><version>7.0.17</version><scope>provided</scope></dependency>
+        <dependency><groupId>com.github.angeschossen</groupId><artifactId>LandsAPI</artifactId><version>7.25.4</version><scope>provided</scope></dependency>
+        <dependency><groupId>com.github.TownyAdvanced</groupId><artifactId>Towny</artifactId><version>0.102.0.13</version><scope>provided</scope></dependency>
+        <dependency><groupId>com.github.TechFortress</groupId><artifactId>GriefPrevention</artifactId><version>18.0.0</version><scope>provided</scope></dependency>
+        <dependency><groupId>me.clip</groupId><artifactId>placeholderapi</artifactId><version>2.12.3</version><scope>provided</scope></dependency>
+        <dependency><groupId>com.google.code.gson</groupId><artifactId>gson</artifactId><version>2.13.2</version><scope>provided</scope></dependency>
+        <dependency><groupId>org.projectlombok</groupId><artifactId>lombok</artifactId><version>${lombok.version}</version><scope>provided</scope></dependency>
+        <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><version>${junit.version}</version><scope>test</scope></dependency>
+        <dependency><groupId>org.xerial</groupId><artifactId>sqlite-jdbc</artifactId><version>${sqlite-jdbc.version}</version><scope>test</scope></dependency>
+    </dependencies>
 
     <build>
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-                <filtering>true</filtering>
-            </resource>
-        </resources>
         <finalName>${project.artifactId}-${project.version}</finalName>
+        <resources><resource><directory>src/main/resources</directory><filtering>true</filtering></resource></resources>
+        <pluginManagement>
+            <plugins>
+                <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-clean-plugin</artifactId><version>3.5.0</version></plugin>
+                <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-resources-plugin</artifactId><version>3.5.0</version></plugin>
+                <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-jar-plugin</artifactId><version>3.5.0</version></plugin>
+                <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-help-plugin</artifactId><version>3.5.1</version></plugin>
+                <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-install-plugin</artifactId><version>3.1.4</version></plugin>
+                <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-deploy-plugin</artifactId><version>3.1.4</version></plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-install-plugin</artifactId>
-                <version>3.1.4</version>
+                <groupId>org.apache.maven.plugins</groupId><artifactId>maven-enforcer-plugin</artifactId><version>3.6.3</version>
+                <executions><execution><id>build-werkzeuge-pruefen</id><goals><goal>enforce</goal></goals><configuration><rules>
+                    <requireMavenVersion><version>[3.9.15,4.0.0)</version></requireMavenVersion>
+                    <requireJavaVersion><version>[25,26)</version></requireJavaVersion>
+                </rules></configuration></execution></executions>
             </plugin>
             <plugin>
-                <!-- Shade PaperLib into project -->
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.6.0</version>
+                <groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><version>3.14.1</version>
                 <configuration>
-                    <dependencyReducedPomLocation>${project.build.directory}/dependency-reduced-pom.xml
-                    </dependencyReducedPomLocation>
-                    <relocations>
-                        <relocation>
-                            <pattern>io.papermc.lib</pattern>
-                            <shadedPattern>me.SuperRonanCraft.BetterRTP.lib.paperlib</shadedPattern>
-                        </relocation>
-                        <relocation>
-                            <pattern>com.tcoded.folialib</pattern>
-                            <shadedPattern>me.SuperRonanCraft.BetterRTP.lib.folialib</shadedPattern>
-                        </relocation>
-                    </relocations>
+                    <release>${maven.compiler.release}</release>
+                    <annotationProcessorPaths><path><groupId>org.projectlombok</groupId><artifactId>lombok</artifactId><version>${lombok.version}</version></path></annotationProcessorPaths>
                 </configuration>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.14.0</version>
+                <groupId>org.apache.maven.plugins</groupId><artifactId>maven-shade-plugin</artifactId><version>3.6.2</version>
+                <executions><execution><phase>package</phase><goals><goal>shade</goal></goals></execution></executions>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
-                    <annotationProcessorPaths>
-                        <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>${lombok.version}</version>
-                        </path>
-                    </annotationProcessorPaths>
+                    <dependencyReducedPomLocation>${project.build.directory}/dependency-reduced-pom.xml</dependencyReducedPomLocation>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId><artifactId>maven-surefire-plugin</artifactId><version>3.5.4</version>
             </plugin>
         </plugins>
     </build>
 
-    <repositories>
-        <!-- CAN BE UNCOMMENTED IF YOU HAVE ACCESS TO THE REPO -->
-        <!--<repository>
-            <id>ronanplugins-private</id>
-            <name>RonanPlugins Repository</name>
-            <url>https://repo.ronanplugins.com/private</url>
-        </repository>-->
-        <!-- GitHub based Repos -->
-        <repository>
-            <id>jitpack.io</id>
-            <url>https://jitpack.io</url>
-        </repository>
-        <!-- FoliaLib Repo -->
-        <repository>
-            <id>tcoded-releases</id>
-            <url>https://repo.tcoded.com/releases</url>
-        </repository>
-        <!-- Spigot Repo -->
-        <repository>
-            <id>spigot-repo</id>
-            <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
-        </repository>
-        <!-- PaperMC Repo -->
-        <repository>
-            <id>papermc</id>
-            <url>https://repo.papermc.io/repository/maven-public/</url>
-        </repository>
-        <!-- Vault Repo -->
-        <repository>
-            <id>vault-repo</id>
-            <url>https://nexus.hc.to/content/repositories/pub_releases</url>
-        </repository>
-        <!-- WorldGuard Repo -->
-        <repository>
-            <id>sk89q-repo</id>
-            <url>https://maven.enginehub.org/repo/</url>
-        </repository>
-        <!-- ProjectRed Repo -->
-        <repository>
-            <id>redprotect-repo</id>
-            <url>https://raw.githubusercontent.com/FabioZumbi12/RedProtect/mvn-repo/</url>
-        </repository>
-        <!-- FactionsUUID Repo -->
-        <repository>
-            <id>factions-uuid</id>
-            <url>https://ci.ender.zone/plugin/repository/everything/</url>
-        </repository>
-        <!-- ProtocolLib Repo -->
-        <repository>
-            <id>dmulloy2-repo</id>
-            <url>https://repo.dmulloy2.net/nexus/repository/public/</url>
-        </repository>
-        <!-- EssentialsX Repo -->
-        <repository>
-            <id>essentials-releases</id>
-            <url>https://repo.essentialsx.net/releases/</url>
-        </repository>
-        <!-- PlaceholderAPI Repo -->
-        <repository>
-            <id>placeholderapi</id>
-            <url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
-        </repository>
-        <!-- MinePlots Repo -->
-        <repository>
-            <id>minecodes-repository-releases</id>
-            <name>mineCodes Organization Repository</name>
-            <url>https://repository.minecodes.pl/releases</url>
-        </repository>
-        <!-- Used by Husk plugins -->
-        <repository>
-            <id>william278-releases</id>
-            <url>https://repo.william278.net/releases</url>
-        </repository>
-    </repositories>
-    <dependencies>
-        <!--Spigot API-->
-        <dependency>
-            <groupId>org.spigotmc</groupId>
-            <artifactId>spigot-api</artifactId>
-            <version>1.8.8-R0.1-SNAPSHOT</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- Spigot Stuff -->
-        <dependency>
-            <groupId>org.spigotmc</groupId>
-            <artifactId>spigot</artifactId>
-            <version>1.8.8-R0.1-SNAPSHOT</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- Vault -->
-        <dependency>
-            <groupId>net.milkbowl.vault</groupId>
-            <artifactId>VaultAPI</artifactId>
-            <version>1.7</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- Paper Library for Async Chunk/Teleport -->
-        <dependency>
-            <groupId>io.papermc</groupId>
-            <artifactId>paperlib</artifactId>
-            <version>1.0.8</version>
-            <scope>compile</scope>
-        </dependency>
-        <!-- WorldGuard (https://dev.bukkit.org/projects/worldguard) -->
-        <dependency> <!-- Saber Factions screws up if updated -->
-            <groupId>com.sk89q.worldguard</groupId>
-            <artifactId>worldguard-bukkit</artifactId>
-            <version>7.0.3</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- RedProtect (https://www.spigotmc.org/resources/redprotect.15841/) -->
-        <dependency>
-            <groupId>br.net.fabiozumbi12.RedProtect</groupId>
-            <artifactId>RedProtect-Core</artifactId>
-            <version>7.7.3</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>br.net.fabiozumbi12.RedProtect</groupId>
-            <artifactId>RedProtect-Spigot-1.13</artifactId>
-            <version>7.7.3</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- FactionsUUID (https://www.spigotmc.org/resources/factionsuuid.1035/) -->
-        <dependency>
-            <groupId>com.massivecraft</groupId>
-            <artifactId>Factions</artifactId>
-            <version>1.6.9.5-U0.6.8</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- Lands (https://www.spigotmc.org/resources/lands.53313/) -->
-        <dependency>
-            <groupId>com.github.angeschossen</groupId>
-            <artifactId>LandsAPI</artifactId>
-            <version>6.28.11</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- ProtocolLib -->
-        <dependency>
-            <groupId>com.comphenix.protocol</groupId>
-            <artifactId>ProtocolLib</artifactId>
-            <version>5.3.0</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- Towny (https://www.spigotmc.org/resources/towny.72694/) -->
-        <dependency>
-            <groupId>com.github.TownyAdvanced</groupId>
-            <artifactId>Towny</artifactId>
-            <version>0.98.6.6</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- GriefPrevention (https://www.spigotmc.org/resources/griefprevention.1884/) -->
-        <dependency>
-            <groupId>com.github.TechFortress</groupId>
-            <artifactId>GriefPrevention</artifactId>
-            <version>17.0.0</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- KingdomsX (https://www.spigotmc.org/resources/kingdomsx.77670/) -->
-        <dependency>
-            <groupId>com.github.cryptomorin</groupId>
-            <artifactId>kingdoms</artifactId>
-            <version>1.16.8.1.1</version>
-            <scope>provided</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>*</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <!-- GriefDefender (https://www.spigotmc.org/resources/griefdefender.68900/) -->
-        <dependency>
-            <groupId>com.github.bloodmc</groupId>
-            <artifactId>GriefDefenderApi</artifactId>
-            <version>920a610</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- Peublos (https://www.spigotmc.org/resources/pueblos.91255/) -->
-        <dependency>
-            <groupId>com.github.SuperRonanCraft</groupId>
-            <artifactId>Pueblos</artifactId>
-            <version>97b96c9</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- Particles Library
-        https://github.com/ByteZ1337/ParticleLib
-        (https://github.com/ByteZ1337/ParticleLib/blob/master/src/main/java/xyz/xenondevs/particle/ParticleEffect.java) -->
-        <dependency>
-            <groupId>xyz.xenondevs</groupId>
-            <artifactId>particle</artifactId>
-            <version>1.8.4</version>
-            <scope>compile</scope>
-        </dependency>
-        <!-- Lombok Support (@Getter & @Setter)-->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>${lombok.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- EssentialsX -->
-        <dependency>
-            <groupId>net.essentialsx</groupId>
-            <artifactId>EssentialsX</artifactId>
-            <version>2.21.0</version>
-            <scope>provided</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.bstats</groupId>
-                    <artifactId>bstats-bukkit</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <!-- Saber Factions (https://www.spigotmc.org/resources/saberfactions.69771/) (Added in 3.4.5)-->
-        <dependency> <!-- WorldGuard screws up if updated -->
-            <groupId>com.github.SaberLLC</groupId>
-            <artifactId>Saber-Factions</artifactId>
-            <version>2.4.0-RC</version>
-            <scope>provided</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.sk89q.worldguard</groupId>
-                    <artifactId>worldguard-bukkit</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <!-- PlaceholderAPI Support (Added in 3.4.5)-->
-        <dependency>
-            <groupId>me.clip</groupId>
-            <artifactId>placeholderapi</artifactId>
-            <version>2.11.6</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- HuskClaims (https://www.spigotmc.org/resources/huskclaims.114467/) (Added in 3.6.13)-->
-        <dependency>
-            <groupId>net.william278.huskclaims</groupId>
-            <artifactId>huskclaims-bukkit</artifactId>
-            <version>1.5.10</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- Husktown (https://www.spigotmc.org/resources/husktowns.92672/) (Added in 3.4.5)-->
-        <dependency>
-            <groupId>net.william278.husktowns</groupId>
-            <artifactId>husktowns-bukkit</artifactId>
-            <version>3.0</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- MinePlots (https://builtbybit.com/resources/mineplots.21646/) (Added in 3.6.6 )   -->
-        <dependency>
-            <groupId>pl.minecodes.plots</groupId>
-            <artifactId>plugin-api</artifactId>
-            <version>3.4.5</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- FoliaLib -->
-        <dependency>
-            <groupId>com.tcoded</groupId>
-            <artifactId>FoliaLib</artifactId>
-            <version>0.5.1</version>
-            <scope>compile</scope>
-        </dependency>
-        <!-- FactionsBridge -->
-        <dependency>
-            <groupId>com.dansplugins.factionsystem</groupId>
-            <artifactId>FactionsBridge</artifactId>
-            <version>1.3.8</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/lib/FactionsBridge-1.3.8.jar</systemPath>
-        </dependency>
-        <dependency>
-            <groupId>com.github.WhipDevelopment</groupId>
-            <artifactId>CrashClaim</artifactId>
-            <version>c697d3e9ef</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.bekvon.bukkit.residence</groupId>
-            <artifactId>Residence</artifactId>
-            <version>5.1.4.1</version>
-            <scope>system</scope>
-            <optional>true</optional>
-            <systemPath>${project.basedir}/lib/Residence5.1.4.1.jar</systemPath>
-        </dependency>
-    </dependencies>
+    <profiles>
+        <profile><id>dev</id><build><plugins><plugin>
+            <groupId>org.apache.maven.plugins</groupId><artifactId>maven-jar-plugin</artifactId><version>3.4.2</version>
+            <configuration><outputDirectory>../../Java/plugins</outputDirectory></configuration>
+        </plugin></plugins></build></profile>
+    </profiles>
 </project>

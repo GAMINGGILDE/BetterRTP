@@ -7,14 +7,14 @@ import lombok.Setter;
 
 public class QueueData {
 
-    @Getter final int database_id;
+    @Getter final int databaseId;
     @Getter @Setter Location location;
     @Getter final long generated;
 
-    public QueueData(Location location, long generated, int database_id) {
+    public QueueData(Location location, long generated, int databaseId) {
         this.location = location;
         this.generated = generated;
-        this.database_id = database_id;
+        this.databaseId = databaseId;
     }
 
 }

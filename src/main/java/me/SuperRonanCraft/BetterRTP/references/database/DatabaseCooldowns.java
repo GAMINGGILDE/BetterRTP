@@ -9,13 +9,12 @@ import java.util.List;
 import java.util.UUID;
 import java.util.logging.Level;
 
-import org.bukkit.Bukkit;
-import org.bukkit.World;
-
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.CooldownData;
 
 public class DatabaseCooldowns extends SQLite {
+
+    private volatile List<String> worldNames = List.of();
 
     public DatabaseCooldowns() {
         super(DATABASE_TYPE.COOLDOWN);
@@ -35,15 +34,17 @@ public class DatabaseCooldowns extends SQLite {
 
         // If there are disabled worlds, iterate through the loaded worlds on the server and
         // add the world name to the list of table names if they aren't marked as disabled
-        List<World> worlds = Bukkit.getWorlds();
-        if (!disabledWorlds.isEmpty()) {
-            for (World world : worlds) {
-                if (!disabledWorlds.contains(world.getName()))
-                    list.add(world.getName());
+        for (String worldName : worldNames) {
+            if (!disabledWorlds.contains(worldName)) {
+                list.add(worldName);
             }
         }
 
         return list;
+    }
+
+    public void setWorldNames(List<String> worldNames) {
+        this.worldNames = List.copyOf(worldNames);
     }
 
     public enum COLUMNS {
@@ -62,11 +63,11 @@ public class DatabaseCooldowns extends SQLite {
         }
     }
 
-    public void removePlayer(UUID uuid, World world) {
+    public void removePlayer(UUID uuid, String worldName) {
         // Create SQL query string with backtick-ed table name to allow for special characters
         String sql = String.format(
                 "DELETE FROM `%s` WHERE %s = ?",
-                world.getName(),
+                worldName,
                 COLUMNS.UUID.name
         );
         List<Object> params = new ArrayList<Object>() {{
@@ -75,7 +76,16 @@ public class DatabaseCooldowns extends SQLite {
         sqlUpdate(sql, params);
     }
 
-    public CooldownData getCooldown(UUID uuid, World world) {
+    public CooldownData getCooldown(UUID uuid, String worldName) {
+        try {
+            return SQLiteExecutor.executor().submit(() -> readCooldown(uuid, worldName)).get();
+        } catch (Exception exception) {
+            BetterRTP.getInstance().getLogger().log(Level.SEVERE, "Unable to load an RTP cooldown", exception);
+            return null;
+        }
+    }
+
+    private CooldownData readCooldown(UUID uuid, String worldName) {
         Connection conn = null;
         PreparedStatement ps = null;
         ResultSet rs = null;
@@ -84,7 +94,7 @@ public class DatabaseCooldowns extends SQLite {
             // Create prepared statement with backtick-ed table name to allow for special characters
             ps = conn.prepareStatement(String.format(
                     "SELECT * FROM `%s` WHERE %s = ?",
-                    world.getName(),
+                    worldName,
                     COLUMNS.UUID.name
             ));
             ps.setString(1, uuid.toString());
@@ -104,19 +114,14 @@ public class DatabaseCooldowns extends SQLite {
     }
 
     //Set a player Cooldown
-    public void setCooldown(World world, CooldownData data) {
-        String pre = "INSERT OR REPLACE INTO ";
-        String sql = pre + world.getName() + " ("
-                + COLUMNS.UUID.name + ", "
-                + COLUMNS.COOLDOWN_DATE.name + " "
-                //+ COLUMNS.USES.name + " "
-                + ") VALUES(?, ?)";
-        List<Object> params = new ArrayList<Object>() {{
-                add(data.getUuid().toString());
-                add(data.getTime());
-                //add(data.getUses());
-        }};
-        sqlUpdate(sql, params);
+    public void setCooldown(String worldName, CooldownData data) {
+        SQLiteExecutor.executor().submit(() -> {
+            String sql = "INSERT OR REPLACE INTO " + worldName + " ("
+                    + COLUMNS.UUID.name + ", "
+                    + COLUMNS.COOLDOWN_DATE.name + " "
+                    + ") VALUES(?, ?)";
+            sqlUpdate(sql, List.of(data.getUuid().toString(), data.getTime()));
+        });
     }
 
     //Update multiple players cooldowns

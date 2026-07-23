@@ -23,11 +23,15 @@ public class WorldLocation implements RTPWorld, RTPWorld_Defaulted {
     private final String name;
 
     public WorldLocation(String location_name) {
+        this(location_name, BetterRTP.getInstance().getRTP().getRTPdefaultWorld());
+    }
+
+    public WorldLocation(String location_name, RTPWorld defaults) {
         FileOther.FILETYPE config = BetterRTP.getInstance().getFiles().getType(FileOther.FILETYPE.LOCATIONS);
         List<Map<?, ?>> map = config.getMapList("Locations");
         //WorldDefault worldDefault = BetterRTP.getInstance().getRTP().defaultWorld;
 
-        setupDefaults();
+        setupDefaults(defaults);
         this.name = location_name;
 
         BetterRTP.debug("- Loading Location " + location_name + ":");
@@ -77,7 +81,7 @@ public class WorldLocation implements RTPWorld, RTPWorld_Defaulted {
                     if (maxRad <= 0) {
                         Message_RTP.sms(Bukkit.getConsoleSender(),
                                 "WARNING! Location '" + location_name + "' Maximum radius of '" + maxRad + "' is not allowed! Set to default value!");
-                        maxRad = BetterRTP.getInstance().getRTP().getRTPdefaultWorld().getMaxRadius();
+                        maxRad = defaults.getMaxRadius();
                     }
                     BetterRTP.debug("- - MaxRadius: " + maxRad);
                 }
@@ -87,19 +91,18 @@ public class WorldLocation implements RTPWorld, RTPWorld_Defaulted {
                     if (minRad < 0 || minRad >= maxRad) {
                         Message_RTP.sms(Bukkit.getConsoleSender(),
                                 "WARNING! Location '" + location_name + "' Minimum radius of '" + minRad + "' is not allowed! Set to default value!");
-                        minRad = BetterRTP.getInstance().getRTP().getRTPdefaultWorld().getMinRadius();
+                        minRad = defaults.getMinRadius();
                         if (minRad >= maxRad) {
-                            maxRad = BetterRTP.getInstance().getRTP().getRTPdefaultWorld().getMaxRadius();
+                            maxRad = defaults.getMaxRadius();
                             BetterRTP.debug("- ! MaxRadius: " + maxRad);
                         }
                     }
                     BetterRTP.debug("- - MinRad: " + minRad);
                 }
-                if (section.get("Biomes") != null) {
-                    if (section.get("Biomes").getClass() == ArrayList.class) {
-                        this.biomes = new ArrayList<String>((ArrayList) section.get("Biomes"));
-                        BetterRTP.debug("- - Biomes: " + this.biomes);
-                    }
+                if (section.get("Biomes") instanceof List<?> biomeValues) {
+                    this.biomes = new ArrayList<>();
+                    biomeValues.stream().map(String::valueOf).forEach(this.biomes::add);
+                    BetterRTP.debug("- - Biomes: " + this.biomes);
                 }
                 if (BetterRTP.getInstance().getFiles().getType(FileOther.FILETYPE.ECO).getBoolean("Economy.Enabled"))
                     if (section.get("Price") != null) {

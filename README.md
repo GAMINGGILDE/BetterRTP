@@ -1,10 +1,10 @@
-# BetterRTP
+# BetterRTP 4
 
 [![Build](https://github.com/GAMINGGILDE/BetterRTP/actions/workflows/run-tests.yaml/badge.svg)](https://github.com/GAMINGGILDE/BetterRTP/actions/workflows/run-tests.yaml)
 [![Issues](https://img.shields.io/github/issues/GAMINGGILDE/BetterRTP)](https://github.com/GAMINGGILDE/BetterRTP/issues)
 [![Lizenz](https://img.shields.io/github/license/GAMINGGILDE/BetterRTP)](LICENSE)
 
-BetterRTP ist ein umfangreich konfigurierbares Zufallsteleport-Plugin für Minecraft-Server. Dieses Repository ist der von GAMINGGILDE gepflegte Fork. Der Schwerpunkt liegt auf der Kompatibilität mit aktuellen Serverversionen, einschließlich regionssicherem Scheduling und Teleportieren unter Folia 26.1.x.
+BetterRTP ist ein umfangreich konfigurierbares Zufallsteleport-Plugin für moderne Paper- und Folia-Server. Dieses Repository ist der von GAMINGGILDE gepflegte Fork. Version 4 konzentriert sich ausschließlich auf aktuelle Serverplattformen und regionssicheres Scheduling.
 
 ## Funktionen
 
@@ -14,20 +14,19 @@ BetterRTP ist ein umfangreich konfigurierbares Zufallsteleport-Plugin für Minec
 - Optionale Abklingzeiten, Verzögerungen, Economy-Kosten und Nahrungskosten
 - Vorab generierte Teleportziele mit SQLite-Speicherung
 - Folia-kompatibles Scheduling für Regionen, Zielorte und Entitäten
-- Optionale Integrationen mit Vault, WorldGuard, GriefPrevention, Towny, Lands, Residence, PlaceholderAPI und weiteren Schutz-Plugins
+- Schlanke optionale Integrationen mit Vault, PlaceholderAPI, WorldGuard, GriefPrevention, Towny und Lands
 - Mitgelieferte Sprachdateien unter [`src/main/resources/lang`](src/main/resources/lang)
 
 ## Voraussetzungen
 
-Für den Betrieb wird ein kompatibler Spigot-, Paper- oder Folia-Server benötigt. Verwende die Java-Version, die von deiner jeweiligen Serversoftware vorausgesetzt wird. Folia 26.1.x wird mit Java 25 betrieben.
+Für den Betrieb werden Paper oder Folia ab Version 26.1 und Java 25 benötigt. Spigot und ältere Minecraft-Versionen werden ab BetterRTP 4 nicht mehr unterstützt.
 
 Zum Bauen von BetterRTP werden benötigt:
 
 - Git
-- JDK 17 oder neuer; JDK 25 wurde lokal erfolgreich getestet
-- Apache Maven 3.9 oder neuer, verfügbar über den Befehl `mvn`
+- JDK 25
 
-Das Projekt erzeugt weiterhin Java-8-Bytecode, um ältere Serverversionen möglichst lange zu unterstützen. Build- und Laufzeitumgebung sind daher getrennt zu betrachten: Für den Minecraft-Server muss immer die Java-Version verwendet werden, die dessen Distribution verlangt.
+Der mitgelieferte Maven Wrapper lädt automatisch die festgelegte Maven-Version 3.9.16. Das Projekt erzwingt Java 25 und erzeugt Java-25-Bytecode.
 
 ## Plugin bauen
 
@@ -36,16 +35,24 @@ Klone diesen Fork und führe Maven im Stammverzeichnis des Repositorys aus:
 ```bash
 git clone https://github.com/GAMINGGILDE/BetterRTP.git
 cd BetterRTP
-mvn clean package
+./mvnw clean package
 ```
+
+Unter Windows kann stattdessen `mvnw.cmd clean package` verwendet werden.
 
 Das fertige, einschließlich seiner benötigten Bibliotheken gepackte Server-Plugin wird hier erzeugt:
 
 ```text
-target/BetterRTP-3.7.jar
+target/BetterRTP-4.0.0-SNAPSHOT.jar
 ```
 
-`mvn test` prüft derzeit die Kompilierung und den Build. Das Projekt enthält aktuell noch keine automatisierten Unit- oder Integrationstests.
+`./mvnw test` kompiliert das Projekt und führt die automatisierten Unit-Tests aus. Diese prüfen unter anderem die Kreis- und Quadratberechnung sowie die Erzeugung gültiger RTP-Koordinaten.
+
+Die internen Komponenten- und Schedulerregeln sind in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) beschrieben. Vor einer
+Veröffentlichung sollte die
+[`docs/RELEASE-CHECKLIST.md`](docs/RELEASE-CHECKLIST.md) vollständig
+abgearbeitet werden.
 
 ## Veröffentlichungen
 
@@ -58,7 +65,7 @@ Die Version im Tag ohne das führende `v` muss exakt mit der Version in der `pom
 Das optionale Profil `dev` schreibt die erzeugte Core-JAR in das lokale Plugin-Verzeichnis, das in der `pom.xml` konfiguriert ist:
 
 ```bash
-mvn clean package -Pdev
+./mvnw clean package -Pdev
 ```
 
 Dieser Ausgabepfad ist auf die jeweilige Entwicklungsumgebung zugeschnitten. In CI-Systemen und auf anderen Rechnern sollte der normale Build-Befehl verwendet werden.
@@ -70,7 +77,7 @@ Der Build im Stammverzeichnis erzeugt ausschließlich das BetterRTP-Core-Plugin.
 ## Installation
 
 1. Stoppe den Minecraft-Server vollständig.
-2. Kopiere `target/BetterRTP-3.7.jar` in das Verzeichnis `plugins` des Servers.
+2. Kopiere `target/BetterRTP-4.0.0-SNAPSHOT.jar` in das Verzeichnis `plugins` des Servers.
 3. Entferne oder archiviere ältere BetterRTP-JARs, sodass nur eine Version geladen wird.
 4. Starte den Server und prüfe die erzeugte Konfiguration unter `plugins/BetterRTP`.
 5. Teste die Teleportation mit `/rtp`. Nach reinen Konfigurationsänderungen kann `/rtp reload` verwendet werden.
@@ -80,6 +87,24 @@ Bei Plugin-Updates – insbesondere bei Änderungen am Scheduler oder an der Fol
 ## Konfiguration und Übersetzungen
 
 Die Standardkonfiguration ist in [`src/main/resources/config.yml`](src/main/resources/config.yml) dokumentiert. Die Sprachdateien befinden sich unter [`src/main/resources/lang`](src/main/resources/lang).
+
+Alle strukturellen Konfigurationsdateien besitzen ab BetterRTP 4 den Eintrag `Config-Version: 4`. Beim ersten Start mit vorhandenen Dateien aus Version 3.7 werden diese automatisch migriert. Vor jeder Änderung legt BetterRTP eine Sicherung wie `config.yml.v3.bak` an. Bereits vorhandene Einstellungen bleiben erhalten; neue Standardwerte werden nur zur Laufzeit ergänzt und nicht stillschweigend in die Benutzerdateien geschrieben.
+
+Weltbezogene Einstellungen verwenden in Version 4 normale YAML-Mappings statt Listen mit jeweils einem Eintrag:
+
+```yaml
+CustomWorlds:
+  survival:
+    MaxRadius: 5000
+    MinRadius: 100
+
+Overrides:
+  lobby: survival
+```
+
+Dasselbe vereinfachte Format gilt für `WorldType`, `PermissionGroup.Groups`, `Locations` und `CustomWorlds.Prices`. Veraltete Materialnamen aus 3.7 werden bei der Migration in aktuelle Paper-Materialnamen übersetzt. Ungültige Radien, Höhen, Formen, Welttypen, Preise und Materialien werden beim Start mit dem genauen Dateinamen und Konfigurationspfad gemeldet.
+
+Die SQLite-Datenbank unter `plugins/BetterRTP/data/database.db` besitzt ebenfalls eine Schema-Version. Vor der ersten Schema-Migration wird eine Sicherung wie `database.db.schema-v0.bak` erstellt. Konfigurations- und Datenbank-Sicherungen sollten erst gelöscht werden, nachdem die migrierte Installation erfolgreich getestet wurde.
 
 Neue und aktualisierte Übersetzungen sollten dieselben Schlüssel wie `en.yml` verwenden. Bestehende Schlüssel dürfen nur umbenannt oder entfernt werden, wenn gleichzeitig ihre Verwendung im Java-Code angepasst wird.
 
@@ -96,14 +121,14 @@ Fehlerberichte und Pull Requests sind über den [Issue-Tracker von GAMINGGILDE](
 Führe vor dem Erstellen eines Pull Requests folgenden Befehl aus:
 
 ```bash
-mvn clean package
+./mvnw clean package
 ```
 
 ## Danksagung
 
 BetterRTP wurde ursprünglich von [SuperRonanCraft](https://github.com/SuperRonanCraft) entwickelt und gepflegt. Dieser Fork wird von [Christian F](https://github.com/CFPlusPlus) für [GAMINGGILDE](https://github.com/GAMINGGILDE) betreut.
 
-Das Projekt bindet unter anderem [PaperLib](https://github.com/PaperMC/PaperLib), [FoliaLib](https://github.com/TechnicallyCoded/FoliaLib) und [ParticleLib](https://github.com/ByteZ1337/ParticleLib) ein. Weitere optionale Server-Integrationen sind in der `pom.xml` aufgeführt.
+Das Plugin verwendet direkt die Scheduler-, Teleport- und Partikel-APIs von Paper und Folia. Die unterstützten optionalen Integrationen sind in der `pom.xml` aufgeführt.
 
 Die ursprüngliche BetterRTP-Ressource ist weiterhin auf [SpigotMC](https://www.spigotmc.org/resources/36081/) verfügbar.
 

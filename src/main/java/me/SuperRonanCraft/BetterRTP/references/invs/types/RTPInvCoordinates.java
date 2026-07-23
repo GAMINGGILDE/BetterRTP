@@ -16,7 +16,7 @@ import java.util.ArrayList;
 public class RTPInvCoordinates extends RTPInventory {
 
     public void show(Player p) {
-        if (BetterRTP.getInstance().getPInfo().getInvWorld().get(p) == null) {
+        if (BetterRTP.getInstance().getPInfo().getInvWorld().get(p.getUniqueId()) == null) {
             BetterRTP.getInstance().getPInfo().setNextInv(p, this.type);
             BetterRTP.getInstance().getInvs().getInv(RTP_INV_SETTINGS.WORLDS).show(p);
             return;
@@ -40,9 +40,6 @@ public class RTPInvCoordinates extends RTPInventory {
     @Override
     public void clickEvent(InventoryClickEvent e) {
         int slot = e.getSlot();
-        for (RTP_COORDINATES_SETTINGS set : RTP_COORDINATES_SETTINGS.values()) {
-            
-        }
         for (RTP_INV_ITEMS type : RTP_INV_ITEMS.values()) {
             if (type.slot != -1) {
                 switch (type) {

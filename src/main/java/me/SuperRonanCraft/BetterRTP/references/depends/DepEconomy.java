@@ -1,119 +1,190 @@
 package me.SuperRonanCraft.BetterRTP.references.depends;
 
-import me.SuperRonanCraft.BetterRTP.references.PermissionNode;
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
+import me.SuperRonanCraft.BetterRTP.player.rtp.RtpRequest;
+import me.SuperRonanCraft.BetterRTP.references.PermissionNode;
 import me.SuperRonanCraft.BetterRTP.references.file.FileOther;
-import me.SuperRonanCraft.BetterRTP.references.messages.MessagesCore;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPlayer;
 import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.GameMode;
-import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.RegisteredServiceProvider;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+
 public class DepEconomy {
-    private Economy e;
-    private int hunger = 0;
-    private boolean checked = false;
 
-    public boolean charge(CommandSender sendi, WorldPlayer pWorld) {
-        check(false);
-        Player player = pWorld.getPlayer();
-        //Hunger Stuff
-        boolean took_food = false;
-        if (hunger != 0
-                && pWorld.getPlayerInfo().isTakeHunger()
-                && !PermissionNode.BYPASS_HUNGER.check(player)
-                && (player.getGameMode() == GameMode.SURVIVAL || player.getGameMode() == GameMode.ADVENTURE)) {
-            boolean has_hunger = player.getFoodLevel() >= hunger;
-            if (!has_hunger) {
-                MessagesCore.FAILED_HUNGER.send(sendi);
-                return false;
-            } else {
-                player.setFoodLevel(player.getFoodLevel() - hunger);
-                took_food = true;
-            }
-        }
-        //Economy Stuff
-        if (e != null
-                && pWorld.getPrice() != 0
-                && pWorld.getPlayerInfo().isTakeMoney()
-                && !PermissionNode.BYPASS_ECONOMY.check(player)) {
-            try {
-                EconomyResponse r = e.withdrawPlayer(player, pWorld.getPrice());
-                boolean passed_economy = r.transactionSuccess();
-                if (!passed_economy) {
-                    MessagesCore.FAILED_PRICE.send(sendi, pWorld.getPrice());
-                    if (took_food)
-                        player.setFoodLevel(player.getFoodLevel() + hunger);
-                } //else
-                    //pWorld.eco_money_taken = true;
-                return passed_economy;
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        //Default value
-        return true;
+    private volatile Economy economy;
+    private volatile int hungerCost;
+
+    public Reservation reserve(WorldPlayer worldPlayer) {
+        return reserve(
+                worldPlayer.getPlayer(),
+                worldPlayer.getPrice(),
+                worldPlayer.getPlayerInfo().isTakeMoney(),
+                worldPlayer.getPlayerInfo().isTakeHunger());
     }
 
-    public boolean hasBalance(WorldPlayer pWorld) {
-        check(false);
-        //Economy Stuff
-        int price = pWorld.getPrice();
-        if (e != null && price != 0 && !PermissionNode.BYPASS_ECONOMY.check(pWorld.getPlayer())) {
-            try {
-                return e.getBalance(pWorld.getPlayer()) >= price;
-            } catch (Exception e) {
-                e.printStackTrace();
+    public Reservation reserve(RtpRequest request) {
+        return reserve(
+                request.player(),
+                request.world().price(),
+                request.options().takeMoney(),
+                request.options().takeHunger());
+    }
+
+    private Reservation reserve(
+            Player player, int configuredPrice, boolean takeMoney, boolean takeHunger) {
+        int reservedHunger = applicableHungerCost(player, takeHunger);
+        if (player.getFoodLevel() < reservedHunger) {
+            return Reservation.failed(Failure.HUNGER);
+        }
+
+        Economy provider = economy;
+        double price = applicablePrice(player, configuredPrice, takeMoney, provider);
+        if (price <= 0.0D) {
+            return Reservation.success(player, null, 0.0D, reservedHunger);
+        }
+
+        try {
+            EconomyResponse response = provider.withdrawPlayer(player, price);
+            if (!response.transactionSuccess()) {
+                return Reservation.failed(Failure.ECONOMY);
             }
+            return Reservation.success(player, provider, price, reservedHunger);
+        } catch (RuntimeException exception) {
+            BetterRTP.getInstance().getLogger().log(
+                    Level.WARNING, "Unable to reserve the RTP price for " + player.getName(), exception);
+            return Reservation.failed(Failure.ECONOMY);
         }
-        //Default value
-        return true;
     }
 
-    public boolean hasHunger(WorldPlayer pWorld) {
-        check(false);
-        Player player = pWorld.getPlayer();
-        //Hunger Stuff
-        if (hunger != 0
-                && !PermissionNode.BYPASS_HUNGER.check(player)
-                && (player.getGameMode() == GameMode.SURVIVAL || player.getGameMode() == GameMode.ADVENTURE)) {
-            return player.getFoodLevel() >= hunger;
+    public boolean hasBalance(WorldPlayer worldPlayer) {
+        Economy provider = economy;
+        double price = applicablePrice(worldPlayer, provider);
+        if (price <= 0.0D) {
+            return true;
         }
-        //Default value
-        return true;
+        try {
+            return provider.getBalance(worldPlayer.getPlayer()) >= price;
+        } catch (RuntimeException exception) {
+            BetterRTP.getInstance().getLogger().log(Level.WARNING,
+                    "Unable to check the RTP balance for " + worldPlayer.getPlayer().getName(), exception);
+            return false;
+        }
     }
 
-    /*public void unCharge(Player p, WorldPlayer pWorld) {
-        if (e != null && pWorld.getPrice() != 0 && pWorld.eco_money_taken)
-            e.depositPlayer(p, pWorld.getPrice());
-    }*/
+    public boolean hasHunger(WorldPlayer worldPlayer) {
+        return worldPlayer.getPlayer().getFoodLevel() >= applicableHungerCost(worldPlayer);
+    }
 
     public void load() {
-        check(true);
+        FileOther.FILETYPE config = FileOther.FILETYPE.ECO;
+        hungerCost = config.getBoolean("Hunger.Enabled")
+                ? Math.max(0, config.getInt("Hunger.Honches"))
+                : 0;
+        economy = findEconomyProvider(config.getBoolean("Economy.Enabled"));
     }
 
-    private void check(boolean force) {
-        if (!checked || force)
-            registerEconomy();
-        if (BetterRTP.getInstance().getFiles().getType(FileOther.FILETYPE.ECO).getBoolean("Hunger.Enabled"))
-            hunger = BetterRTP.getInstance().getFiles().getType(FileOther.FILETYPE.ECO).getInt("Hunger.Honches");
-        else
-            hunger = 0;
-    }
-
-    private void registerEconomy() {
-        try {
-            if (BetterRTP.getInstance().getFiles().getType(FileOther.FILETYPE.ECO).getBoolean("Economy.Enabled"))
-                if (BetterRTP.getInstance().getServer().getPluginManager().isPluginEnabled("Vault")) {
-                    RegisteredServiceProvider<Economy> rsp = BetterRTP.getInstance().getServer().getServicesManager().getRegistration(Economy.class);
-                    e = rsp.getProvider();
-                }
-        } catch (NullPointerException e) {
-            //
+    private Economy findEconomyProvider(boolean enabled) {
+        if (!enabled || !BetterRTP.getInstance().getServer().getPluginManager().isPluginEnabled("Vault")) {
+            return null;
         }
-        checked = true;
+        RegisteredServiceProvider<Economy> registration = BetterRTP.getInstance()
+                .getServer().getServicesManager().getRegistration(Economy.class);
+        return registration == null ? null : registration.getProvider();
+    }
+
+    private double applicablePrice(WorldPlayer worldPlayer, Economy provider) {
+        return applicablePrice(
+                worldPlayer.getPlayer(), worldPlayer.getPrice(),
+                worldPlayer.getPlayerInfo().isTakeMoney(), provider);
+    }
+
+    private double applicablePrice(
+            Player player, int configuredPrice, boolean takeMoney, Economy provider) {
+        if (provider == null || !takeMoney || PermissionNode.BYPASS_ECONOMY.check(player)) {
+            return 0.0D;
+        }
+        return Math.max(0, configuredPrice);
+    }
+
+    private int applicableHungerCost(WorldPlayer worldPlayer) {
+        Player player = worldPlayer.getPlayer();
+        return applicableHungerCost(player, worldPlayer.getPlayerInfo().isTakeHunger());
+    }
+
+    private int applicableHungerCost(Player player, boolean takeHunger) {
+        if (!takeHunger
+                || PermissionNode.BYPASS_HUNGER.check(player)
+                || (player.getGameMode() != GameMode.SURVIVAL && player.getGameMode() != GameMode.ADVENTURE)) {
+            return 0;
+        }
+        return hungerCost;
+    }
+
+    public enum Failure {
+        NONE,
+        ECONOMY,
+        HUNGER
+    }
+
+    public static final class Reservation {
+        private final Player player;
+        private final Economy economy;
+        private final double price;
+        private final int hunger;
+        private final Failure failure;
+        private final AtomicBoolean refunded = new AtomicBoolean();
+
+        private Reservation(Player player, Economy economy, double price, int hunger, Failure failure) {
+            this.player = player;
+            this.economy = economy;
+            this.price = price;
+            this.hunger = hunger;
+            this.failure = failure;
+        }
+
+        private static Reservation success(Player player, Economy economy, double price, int hunger) {
+            return new Reservation(player, economy, price, hunger, Failure.NONE);
+        }
+
+        private static Reservation failed(Failure failure) {
+            return new Reservation(null, null, 0.0D, 0, failure);
+        }
+
+        public boolean successful() {
+            return failure == Failure.NONE;
+        }
+
+        public Failure failure() {
+            return failure;
+        }
+
+        public void commitHunger() {
+            if (!successful() || hunger <= 0) {
+                return;
+            }
+            player.setFoodLevel(Math.max(0, player.getFoodLevel() - hunger));
+        }
+
+        public void rollback() {
+            if (!successful() || economy == null || price <= 0.0D || !refunded.compareAndSet(false, true)) {
+                return;
+            }
+            try {
+                EconomyResponse response = economy.depositPlayer(player, price);
+                if (!response.transactionSuccess()) {
+                    BetterRTP.getInstance().getLogger().warning(
+                            "Unable to refund " + price + " after a failed RTP for " + player.getName()
+                                    + ": " + response.errorMessage);
+                }
+            } catch (RuntimeException exception) {
+                BetterRTP.getInstance().getLogger().log(Level.SEVERE,
+                        "Unable to refund " + price + " after a failed RTP for " + player.getName(), exception);
+            }
+        }
     }
 }

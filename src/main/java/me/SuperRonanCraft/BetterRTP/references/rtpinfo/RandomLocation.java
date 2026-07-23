@@ -1,7 +1,8 @@
 package me.SuperRonanCraft.BetterRTP.references.rtpinfo;
 
-import io.papermc.lib.PaperLib;
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
+import me.SuperRonanCraft.BetterRTP.player.rtp.RtpWorldSnapshot;
+import me.SuperRonanCraft.BetterRTP.references.helpers.BiomeHelper;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.RTPWorld;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WORLD_TYPE;
 import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
@@ -10,77 +11,54 @@ import org.bukkit.block.Biome;
 import org.bukkit.block.Block;
 
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class RandomLocation {
 
     public static Location generateLocation(RTPWorld rtpWorld) {
-        Location loc;
-        switch (rtpWorld.getShape()) {
-            case CIRCLE: loc = generateRound(rtpWorld); break;
-            case SQUARE:
-            default: loc = generateSquare(rtpWorld); break;
-        }
-        return loc;
-    }
-
-    private static Location generateSquare(RTPWorld rtpWorld) {
-        // Return a Location where a random X and Z are within the bounds defined by MinRadius and MaxRadius
-        int radius_min = rtpWorld.getMinRadius();
-        int radius_max = rtpWorld.getMaxRadius();
         try {
-            if (radius_min < 0 || radius_max < 0 || radius_min >= radius_max) {
-                throw new IllegalArgumentException(); // If MinRadius or MaxRadius is negative, throw an exception
-            }
+            RtpArea area = new RtpArea(rtpWorld.getCenterX(), rtpWorld.getCenterZ(),
+                    rtpWorld.getMinRadius(), rtpWorld.getMaxRadius(), rtpWorld.getShape());
+            RtpArea.Point point = area.randomPoint(ThreadLocalRandom.current());
+            return new Location(rtpWorld.getWorld(), point.x(), 69, point.z());
         } catch (IllegalArgumentException e) {
-            e.printStackTrace();
             BetterRTP.getInstance().getLogger().warning("Incorrect configuration! Check your config and confirm that MinRadius is smaller than MaxRadius and that they are both positive numbers!");
             BetterRTP.getInstance().getLogger().warning("Max: " + rtpWorld.getMaxRadius() + " Min: " + rtpWorld.getMinRadius());
             return null;
         }
-        // Generate a random X and Z based off the radius. No quadrants voodoo.
-        Random random = new Random();
-        int x = random.nextInt(radius_max * 2) - radius_max;
-        int z = (Math.abs(x) >= radius_min)
-            ? random.nextInt(radius_max * 2) - radius_max
-            : (random.nextBoolean() ? 1 : -1) * (radius_min + random.nextInt(radius_max - radius_min));
-        x += rtpWorld.getCenterX();
-        z += rtpWorld.getCenterZ();
-        return new Location(rtpWorld.getWorld(), x, 69, z);
-    }
-
-    private static Location generateRound(RTPWorld rtpWorld) {
-        // Return a random X and Z based off location on a spiral curve
-        int min = rtpWorld.getMinRadius();
-        int max = rtpWorld.getMaxRadius() - min;
-        int x, z;
-
-        double area = Math.PI * (max - min) * (max + min); //of all the area in this donut
-        double subArea = area * new Random().nextDouble(); //pick a random subset of that area
-
-        double r = Math.sqrt(subArea/Math.PI + min * min); //convert area to radius
-        double theta = (r - (int) r) * 2 * Math.PI; //use the remainder as an angle
-
-        // polar to cartesian
-        x = (int) (r * Math.cos(theta));
-        z = (int) (r * Math.sin(theta));
-        x += rtpWorld.getCenterX();
-        z += rtpWorld.getCenterZ();
-        return new Location(rtpWorld.getWorld(), x, 69, z);
     }
 
     public static Location getSafeLocation(WORLD_TYPE type, World world, Location loc, int minY, int maxY, List<String> biomes) {
+        return getSafeLocation(type, world, loc, minY, maxY, biomes,
+                BetterRTP.getInstance().getRTP().getBlockList());
+    }
+
+    public static Location getSafeLocation(
+            Location candidate, RtpWorldSnapshot settings, List<String> blockedBlocks) {
+        return getSafeLocation(
+                settings.worldType(), settings.world(), candidate,
+                settings.minY(), settings.maxY(), settings.biomes(), blockedBlocks);
+    }
+
+    private static Location getSafeLocation(
+            WORLD_TYPE type, World world, Location loc, int minY, int maxY,
+            List<String> biomes, List<String> blockedBlocks) {
         switch (type) { //Get a Y position and check for bad blocks
-            case NETHER: return getLocAtNether(loc.getBlockX(), loc.getBlockZ(), minY, maxY, world, biomes);
+            case NETHER: return getLocAtNether(loc.getBlockX(), loc.getBlockZ(), minY, maxY,
+                    world, biomes, blockedBlocks);
             case NORMAL:
-            default: return getLocAtNormal(loc.getBlockX(), loc.getBlockZ(), minY, maxY, world, biomes);
+            default: return getLocAtNormal(loc.getBlockX(), loc.getBlockZ(), minY, maxY,
+                    world, biomes, blockedBlocks);
         }
     }
-    private static Location getLocAtNormal(int x, int z, int minY, int maxY, World world, List<String> biomes) {
+
+    private static Location getLocAtNormal(
+            int x, int z, int minY, int maxY, World world,
+            List<String> biomes, List<String> blockedBlocks) {
         Block b = getHighestBlock(x, z, world);
         if (!b.getType().isSolid()) { //Water, lava, shrubs...
-            if (!badBlock(b.getType().name(), x, z, world, null)) { //Make sure it's not an invalid block (ex: water, lava...)
+            if (!badBlock(b.getType().name(), x, b.getY(), z, world, null, blockedBlocks)) { //Make sure it's not an invalid block (ex: water, lava...)
                 //int y = world.getHighestBlockYAt(x, z);
                 b = world.getBlockAt(x, b.getY() - 1, z);
             }
@@ -88,7 +66,7 @@ public class RandomLocation {
         //Between max and min y
         if (    b.getY() >= minY
                 && b.getY() <= maxY
-                && !badBlock(b.getType().name(), x, z, world, biomes)) {
+                && !badBlock(b.getType().name(), x, b.getY(), z, world, biomes, blockedBlocks)) {
             return new Location(world, x, b.getY() + 1, z);
         }
         return null;
@@ -101,42 +79,44 @@ public class RandomLocation {
         return b;
     }
 
-    private static Location getLocAtNether(int x, int z, int minY, int maxY, World world, List<String> biomes) {
+    private static Location getLocAtNether(
+            int x, int z, int minY, int maxY, World world,
+            List<String> biomes, List<String> blockedBlocks) {
         //Max and Min Y
         for (int y = minY + 1; y < maxY/*world.getMaxHeight()*/; y++) {
             Block block_current = world.getBlockAt(x, y, z);
-            if (block_current.getType().name().endsWith("AIR") || !block_current.getType().isSolid()) {
-                if (!block_current.getType().name().endsWith("AIR") &&
-                        !block_current.getType().isSolid()) { //Block is not a solid (ex: lava, water...)
-                    String block_in = block_current.getType().name();
-                    if (badBlock(block_in, x, z, world, null))
-                        continue;
-                }
-                String block = world.getBlockAt(x, y - 1, z).getType().name();
-                if (block.endsWith("AIR")) //Block below is air, skip
-                    continue;
-                if (world.getBlockAt(x, y + 1, z).getType().name().endsWith("AIR") //Head space
-                        && !badBlock(block, x, z, world, biomes)) //Valid block
-                    return new Location(world, x, y, z);
+            boolean feetAir = block_current.getType().name().endsWith("AIR");
+            boolean headAir = world.getBlockAt(x, y + 1, z).getType().name().endsWith("AIR");
+            if (!LocationSafetyPolicy.hasBodySpace(
+                    block_current.getType().isSolid(), feetAir, headAir)) {
+                continue;
+            }
+            if (!feetAir && badBlock(
+                    block_current.getType().name(), x, y, z, world, null, blockedBlocks)) {
+                continue;
+            }
+            String block = world.getBlockAt(x, y - 1, z).getType().name();
+            if (!block.endsWith("AIR")
+                    && !badBlock(block, x, y, z, world, biomes, blockedBlocks)) {
+                return new Location(world, x, y, z);
             }
         }
         return null;
     }
 
     // Bad blocks, or bad biome
-    public static boolean badBlock(String block, int x, int z, World world, List<String> biomes) {
-        for (String currentBlock : BetterRTP.getInstance().getRTP().getBlockList()) //Check Block
-            if (currentBlock.equalsIgnoreCase(block))
-                return true;
-        //Check Biomes
-        if (biomes == null || biomes.isEmpty())
-            return false;
-        String biomeCurrent = world.getBiome(x, z).name();
-        for (String biome : biomes)
-            if (biomeCurrent.toUpperCase().contains(biome.toUpperCase()))
-                return false;
-        return true;
-        //FALSE MEANS NO BAD BLOCKS/BIOME WHERE FOUND!
+    public static boolean badBlock(String block, int x, int y, int z, World world, List<String> biomes) {
+        return badBlock(block, x, y, z, world, biomes,
+                BetterRTP.getInstance().getRTP().getBlockList());
+    }
+
+    private static boolean badBlock(
+            String block, int x, int y, int z, World world,
+            List<String> biomes, List<String> blockedBlocks) {
+        String biome = biomes == null || biomes.isEmpty()
+                ? null : BiomeHelper.name(world.getBiome(x, y, z));
+        return !LocationSafetyPolicy.isAllowedSurface(
+                block, biome, blockedBlocks, biomes);
     }
 
     public static void runChunkTest() {
@@ -158,17 +138,18 @@ public class RandomLocation {
     private static void cacheChunkAt(World world, int goal, int start, int xat, int zat) {
         Location location = new Location(world, xat * 16, 0, zat * 16);
         AsyncHandler.syncAtLocation(location, () -> {
-            CompletableFuture<Chunk> task = PaperLib.getChunkAtAsync(location);
+            CompletableFuture<Chunk> task = world.getChunkAtAsync(location);
             task.thenAccept(chunk -> AsyncHandler.syncAtLocation(location, () -> {
                 try {
                     ChunkSnapshot snapshot = chunk.getChunkSnapshot(true, true, false);
                     int maxy = snapshot.getHighestBlockYAt(8, 8);
-                    Biome biome = snapshot.getBiome(8, 8);
+                    Biome biome = snapshot.getBiome(8, maxy, 8);
                     BetterRTP.getInstance().getDatabaseHandler().getDatabaseChunks().addChunk(chunk, maxy, biome);
                     cacheTask(world, goal, start, xat, zat);
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                    throw new RuntimeException();
+                } catch (RuntimeException exception) {
+                    BetterRTP.getInstance().getLogger().log(
+                            java.util.logging.Level.SEVERE,
+                            "Chunk cache test failed at " + location, exception);
                 }
             }));
         });

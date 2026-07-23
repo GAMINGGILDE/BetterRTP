@@ -10,6 +10,7 @@ import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.player.commands.RTPCommand;
 import me.SuperRonanCraft.BetterRTP.references.PermissionCheck;
 import me.SuperRonanCraft.BetterRTP.references.PermissionNode;
+import me.SuperRonanCraft.BetterRTP.references.helpers.BiomeHelper;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.RTPWorld;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPlayer;
 import me.clip.placeholderapi.PlaceholderAPI;
@@ -98,8 +99,10 @@ public class PlaceholderAnalyzer {
         if (BetterRTP.getInstance().isPlaceholderAPI())
             try {
                 str = PlaceholderAPI.setPlaceholders(player, str);
-            } catch (Exception e) {
-                //Something went wrong with PAPI
+            } catch (RuntimeException exception) {
+                BetterRTP.getInstance().getLogger().log(
+                        java.util.logging.Level.WARNING,
+                        "PlaceholderAPI could not process a BetterRTP message", exception);
             }
         return str;
     }
@@ -118,7 +121,7 @@ public class PlaceholderAnalyzer {
 
     private static String biome(String str, Biome biome) {
         if (str.contains(Placeholders.BIOME.name))
-            str = str.replace(Placeholders.BIOME.name, biome.name());
+            str = str.replace(Placeholders.BIOME.name, BiomeHelper.name(biome));
         return str;
     }
 

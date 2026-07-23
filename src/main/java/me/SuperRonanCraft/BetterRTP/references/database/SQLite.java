@@ -2,22 +2,21 @@ package me.SuperRonanCraft.BetterRTP.references.database;
 
 import lombok.NonNull;
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
-import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
 
 import java.io.File;
 import java.io.IOException;
 import java.sql.*;
 import java.util.Iterator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 
 public abstract class SQLite {
 
     private static final String db_file_name = "database";
     List<String> tables;
-    private boolean loaded;
-
-    public String addMissingColumns = "ALTER TABLE %table% ADD COLUMN %column% %type%";
+    private volatile boolean loaded;
 
     private final DATABASE_TYPE type;
 
@@ -33,14 +32,15 @@ public abstract class SQLite {
     }
 
     private Connection getLocal() {
-        File dataFolder = new File(BetterRTP.getInstance().getDataFolder().getPath() + File.separator + "data", db_file_name + ".db");
+        File dataFolder = databaseFile();
         if (!dataFolder.exists()){
             try {
                 dataFolder.getParentFile().mkdir();
                 dataFolder.createNewFile();
-            } catch (IOException e) {
-                BetterRTP.getInstance().getLogger().log(Level.SEVERE, "File write error: " + dataFolder.getPath());
-                e.printStackTrace();
+            } catch (IOException exception) {
+                BetterRTP.getInstance().getLogger().log(
+                        Level.SEVERE, "File write error: " + dataFolder.getPath(), exception);
+                return null;
             }
         }
         try {
@@ -64,40 +64,60 @@ public abstract class SQLite {
             return;
         }
 
-        AsyncHandler.async(() -> {
+        SQLiteExecutor.executor().submit(() -> {
             Connection connection = getSQLConnection();
+            if (connection == null) {
+                BetterRTP.getInstance().getLogger().severe("Unable to open the BetterRTP database");
+                return;
+            }
             try {
-                Statement s = connection.createStatement();
-                for (String table : tables) {
-                    s.executeUpdate(getCreateTable(table));
-                    //s.executeUpdate(createTable_bank);
-                    for (Enum<?> c : getColumns(type)) { //Add missing columns dynamically
-                        try {
-                            String _name = getColumnName(type, c);
-                            String _type = getColumnType(type, c);
-                            //System.out.println("Adding " + _name);
-                            s.executeUpdate(addMissingColumns.replace("%table%", table).replace("%column%", _name).replace("%type%", _type));
-                        } catch (SQLException e) {
-                            //e.printStackTrace();
+                DatabaseSchemaMigrator.migrate(
+                        connection, databaseFile().toPath(), BetterRTP.getInstance().getLogger());
+                try (Statement statement = connection.createStatement()) {
+                    for (String table : tables) {
+                        statement.executeUpdate(getCreateTable(table));
+                        Set<String> existingColumns = getExistingColumns(connection, table);
+                        for (Enum<?> column : getColumns(type)) {
+                            String columnName = getColumnName(type, column);
+                            if (!existingColumns.contains(columnName.toLowerCase())) {
+                                statement.executeUpdate("ALTER TABLE `" + table + "` ADD COLUMN `"
+                                        + columnName + "` " + getColumnType(type, column));
+                            }
                         }
+                        BetterRTP.debug("Database " + type.name() + ":" + table + " configured and loaded!");
                     }
-                    BetterRTP.debug("Database " + type.name() + ":" + table + " configured and loaded!");
                 }
-                s.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
+                loaded = true;
+            } catch (SQLException | IOException exception) {
+                BetterRTP.getInstance().getLogger().log(
+                        Level.SEVERE, "Unable to migrate or initialize database " + type, exception);
             } finally {
                 if (connection != null) {
                     try {
                         connection.close();
-                    } catch (SQLException e) {
-                        e.printStackTrace();
+                    } catch (SQLException exception) {
+                        BetterRTP.getInstance().getLogger().log(
+                                Level.WARNING, "Unable to close the BetterRTP database", exception);
                     }
                 }
             }
-            initialize();
-            loaded = true;
         });
+    }
+
+    private File databaseFile() {
+        return new File(BetterRTP.getInstance().getDataFolder().getPath()
+                + File.separator + "data", db_file_name + ".db");
+    }
+
+    private Set<String> getExistingColumns(Connection connection, String table) throws SQLException {
+        Set<String> columns = new HashSet<>();
+        try (Statement statement = connection.createStatement();
+             ResultSet result = statement.executeQuery("PRAGMA table_info(`" + table + "`)")) {
+            while (result.next()) {
+                columns.add(result.getString("name").toLowerCase());
+            }
+        }
+        return columns;
     }
 
     private String getCreateTable(String table) {
@@ -198,7 +218,6 @@ public abstract class SQLite {
         } catch (SQLException ex) {
             BetterRTP.getInstance().getLogger().log(Level.SEVERE, Errors.sqlConnectionExecute(), ex);
             success = false;
-            ex.printStackTrace();
         } finally {
             close(ps, null, conn);
         }
@@ -223,9 +242,9 @@ public abstract class SQLite {
 
     protected void close(PreparedStatement ps, ResultSet rs, Connection conn) {
         try {
+            if (rs != null) rs.close();
             if (ps != null) ps.close();
             if (conn != null) conn.close();
-            if (rs != null) rs.close();
         } catch (SQLException ex) {
             Error.close(BetterRTP.getInstance(), ex);
         }

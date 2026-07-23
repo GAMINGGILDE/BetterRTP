@@ -7,16 +7,26 @@ import me.SuperRonanCraft.BetterRTP.references.file.FileOther;
 import me.SuperRonanCraft.BetterRTP.references.messages.Message;
 import me.SuperRonanCraft.BetterRTP.references.messages.Message_RTP;
 import me.SuperRonanCraft.BetterRTP.references.messages.MessagesCore;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
+import org.bukkit.block.sign.SignSide;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 
 import java.util.Arrays;
+import java.util.List;
 
 class Interact {
+
+    private static final LegacyComponentSerializer LEGACY_SERIALIZER = LegacyComponentSerializer.builder()
+            .character(LegacyComponentSerializer.SECTION_CHAR)
+            .hexColors()
+            .useUnusualXRepeatedCharacterHexFormat()
+            .build();
 
     private boolean enabled;
     private String title, coloredTitle;
@@ -32,30 +42,32 @@ class Interact {
     void event(PlayerInteractEvent e) {
         if (enabled && e.getClickedBlock() != null && e.getAction() == Action.RIGHT_CLICK_BLOCK && isSign(e.getClickedBlock())) {
             Sign sign = (Sign) e.getClickedBlock().getState();
-            if (sign.getLine(0).equals(coloredTitle)) {
-                String command = sign.getLine(1).split(" ")[0];
-                if (cmd(sign.getLines()).split(" ")[0].equalsIgnoreCase("") || cmd(sign.getLines()).split(" ")[0].equalsIgnoreCase("rtp")) {
+            SignSide side = sign.getTargetSide(e.getPlayer());
+            if (serialize(side.line(0)).equals(coloredTitle)) {
+                String signCommand = cmd(side.lines());
+                String command = signCommand.split(" ")[0];
+                if (command.isEmpty() || command.equalsIgnoreCase("rtp")) {
                     action(e.getPlayer(), null);
                     return;
                 } else
                     for (RTPCommandType cmd : RTPCommandType.values())
                         if (command.equalsIgnoreCase(cmd.name())) {
-                            action(e.getPlayer(), cmd(sign.getLines()).split(" "));
+                            action(e.getPlayer(), signCommand.split(" "));
                             return;
                         }
                 Message_RTP.sms(e.getPlayer(), "&cError! &7Command &a"
-                        + Arrays.toString(cmd(sign.getLines()).split(" ")) + "&7 does not exist! Defaulting command to /rtp!");
+                        + Arrays.toString(signCommand.split(" ")) + "&7 does not exist! Defaulting command to /rtp!");
             }
         }
     }
 
     void createSign(SignChangeEvent e) {
         if (enabled && PermissionNode.SIGN_CREATE.check(e.getPlayer())) {
-            String line = e.getLine(0);
-            if (line != null && (line.equalsIgnoreCase(title) ||
-                    line.equalsIgnoreCase("[RTP]"))) {
-                e.setLine(0, coloredTitle != null ? coloredTitle : "[RTP]");
-                MessagesCore.SIGN.send(e.getPlayer(), cmd(e.getLines()));
+            String line = serialize(e.line(0));
+            if (line.equalsIgnoreCase(title) ||
+                    line.equalsIgnoreCase("[RTP]")) {
+                e.line(0, LEGACY_SERIALIZER.deserialize(coloredTitle != null ? coloredTitle : "[RTP]"));
+                MessagesCore.SIGN.send(e.getPlayer(), cmd(e.lines()));
             }
         }
     }
@@ -64,17 +76,21 @@ class Interact {
         BetterRTP.getInstance().getCmd().commandExecuted(p, "rtp", line);
     }
 
-    private static String cmd(String[] signArray) {
-        String actions = "";
-        for (int i = 1; i < signArray.length; i++) {
-            String line = signArray[i];
-            if (line != null && !line.equals(""))
-                if (actions.equals(""))
-                    actions = line;
-                else
-                    actions = actions.concat(" " + line);
+    private static String cmd(List<Component> signLines) {
+        StringBuilder actions = new StringBuilder();
+        for (int i = 1; i < signLines.size(); i++) {
+            String line = serialize(signLines.get(i));
+            if (!line.isEmpty()) {
+                if (!actions.isEmpty())
+                    actions.append(' ');
+                actions.append(line);
+            }
         }
-        return actions;
+        return actions.toString();
+    }
+
+    private static String serialize(Component component) {
+        return LEGACY_SERIALIZER.serialize(component);
     }
 
     private static boolean isSign(Block block) {

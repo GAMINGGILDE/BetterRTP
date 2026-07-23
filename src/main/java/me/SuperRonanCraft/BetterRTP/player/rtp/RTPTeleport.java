@@ -1,9 +1,12 @@
 package me.SuperRonanCraft.BetterRTP.player.rtp;
 
 import java.util.Arrays;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import org.bukkit.Location;
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -18,66 +21,92 @@ import me.SuperRonanCraft.BetterRTP.references.messages.MessagesCore;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPlayer;
 import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
 
-//---
-//Credit to @PaperMC for PaperLib - https://github.com/PaperMC/PaperLib
-//
-//Use of asyncronous chunk loading and teleporting
-//---
-
 public class RTPTeleport {
 
+    private final RTP runtime;
     private final RTPEffects effects = new RTPEffects();
+
+    /**
+     * @deprecated Obtain this component through {@link RTP#getTeleport()}.
+     */
+    @Deprecated(forRemoval = false)
+    public RTPTeleport() {
+        this(BetterRTP.getInstance().getRTP());
+    }
+
+    RTPTeleport(RTP runtime) {
+        this.runtime = runtime;
+    }
 
     void load() {
         effects.load();
     }
 
-//    void cancel(Player p) { //Cancel loading chunks/teleporting
-//        if (!playerLoads.containsKey(p)) return;
-//        List<CompletableFuture<Chunk>> asyncChunks = playerLoads.get(p);
-//        CompletableFuture.allOf(asyncChunks.toArray(new CompletableFuture[] {})).cancel(true);
-//    }
-
-    void sendPlayer(final CommandSender sendi, final Player p, final Location location, final WorldPlayer wPlayer,
-                    final int attempts, RTP_TYPE type) throws NullPointerException {
+    void sendPlayer(final CommandSender sendi, final RTPPlayer session, final Location location) {
+        Player p = session.getPlayer();
+        WorldPlayer wPlayer = session.getWorldPlayer();
+        int attempts = session.getAttempts();
+        RTP_TYPE type = session.getType();
         Location oldLoc = p.getLocation();
         loadingTeleport(p, sendi); //Send loading message to player who requested
-        //List<CompletableFuture<Chunk>> asyncChunks = getChunks(location); //Get a list of chunks
-        //playerLoads.put(p, asyncChunks);
-        /*CompletableFuture.allOf(asyncChunks.toArray(new CompletableFuture[] {})).thenRun(() -> { //Async chunk load
-            new BukkitRunnable() { //Run synchronously
-                @Override
-                public void run() {*/
         try {
             RTP_TeleportEvent event = new RTP_TeleportEvent(p, location, wPlayer.getWorldtype());
-            getPl().getServer().getPluginManager().callEvent(event);
+            Bukkit.getPluginManager().callEvent(event);
             Location loc = event.getLocation();
-            AsyncHandler.teleportAsync(p, loc).whenComplete((success, throwable) -> {
+            CompletableFuture<Boolean> teleport = session.track(AsyncHandler.teleportAsync(p, loc)
+                    .orTimeout(runtime.pluginSettings().getTeleportTimeoutSeconds(), TimeUnit.SECONDS));
+            teleport.whenComplete((success, throwable) -> {
                 if (throwable != null) {
-                    getPl().getLogger().log(Level.WARNING,
+                    runtime.logger().log(Level.WARNING,
                             "Unable to teleport " + p.getName() + " asynchronously", throwable);
-                    AsyncHandler.syncAtEntity(p, () -> getPl().getPInfo().getRtping().remove(p));
+                    finishFailedTeleport(p, session);
                     return;
                 }
                 if (!Boolean.TRUE.equals(success)) {
-                    getPl().getLogger().warning("Asynchronous teleport failed for " + p.getName());
-                    AsyncHandler.syncAtEntity(p, () -> getPl().getPInfo().getRtping().remove(p));
+                    runtime.logger().warning("Asynchronous teleport failed for " + p.getName());
+                    finishFailedTeleport(p, session);
                     return;
                 }
-                AsyncHandler.syncAtEntity(p, () -> {
-                    afterTeleport(p, loc, wPlayer, attempts, oldLoc, type);
-                    if (sendi != p) //Tell player who requested that the player rtp'd
-                        sendSuccessMsg(sendi, p.getName(), loc, wPlayer, false, attempts);
-                    getPl().getPInfo().getRtping().remove(p); //No longer rtp'ing
-                    //Save respawn location if first join
-                    if (type == RTP_TYPE.JOIN) //RTP Type was Join
-                        if (BetterRTP.getInstance().getSettings().isRtpOnFirstJoin_SetAsRespawn()) //Save as respawn is enabled
-                            p.setBedSpawnLocation(loc, true); //True means to force a respawn even without a valid bed
-                });
+                AsyncHandler.syncAtEntity(
+                        p,
+                        () -> {
+                            try {
+                                afterTeleport(p, loc, wPlayer, attempts, oldLoc, type);
+                                notifyRequester(sendi, p, loc, wPlayer, attempts);
+                                if (type == RTP_TYPE.JOIN
+                                        && runtime.pluginSettings().isRtpOnFirstJoin_SetAsRespawn()) {
+                                    p.setRespawnLocation(loc, true);
+                                }
+                            } finally {
+                                session.completeSuccessfully();
+                            }
+                        },
+                        () -> AsyncHandler.global(session::finish));
             });
         } catch (Exception e) {
-            getPl().getPInfo().getRtping().remove(p); //No longer rtp'ing (errored)
-            e.printStackTrace();
+            session.finish();
+            runtime.logger().log(Level.WARNING, "Unable to start teleport for " + p.getName(), e);
+        }
+    }
+
+    private void finishFailedTeleport(Player player, RTPPlayer session) {
+        AsyncHandler.syncAtEntity(
+                player,
+                session::finish,
+                () -> AsyncHandler.global(session::finish));
+    }
+
+    private void notifyRequester(CommandSender sender, Player teleportedPlayer, Location location,
+                                 WorldPlayer worldPlayer, int attempts) {
+        if (sender == teleportedPlayer) {
+            return;
+        }
+        Runnable notification = () -> sendSuccessMsg(
+                sender, teleportedPlayer.getName(), location, worldPlayer, false, attempts);
+        if (sender instanceof Player requestingPlayer) {
+            AsyncHandler.syncAtEntity(requestingPlayer, notification);
+        } else {
+            AsyncHandler.global(notification);
         }
     }
 
@@ -91,12 +120,12 @@ public class RTPTeleport {
         effects.getTitles().showTitle(RTPEffect_Titles.RTP_TITLE_TYPE.TELEPORT, p, loc, attempts, 0);
         if (effects.getTitles().sendMsg(RTPEffect_Titles.RTP_TITLE_TYPE.TELEPORT))
             sendSuccessMsg(p, p.getName(), loc, wPlayer, true, attempts);
-        getPl().getServer().getPluginManager().callEvent(new RTP_TeleportPostEvent(p, loc, oldLoc, wPlayer, type));
+        Bukkit.getPluginManager().callEvent(new RTP_TeleportPostEvent(p, loc, oldLoc, wPlayer, type));
     }
 
     public boolean beforeTeleportInstant(CommandSender sendi, Player p) {
         RTP_TeleportPreEvent event = new RTP_TeleportPreEvent(p);
-        getPl().getServer().getPluginManager().callEvent(event);
+        Bukkit.getPluginManager().callEvent(event);
         if (!event.isCancelled()) {
             effects.getSounds().playDelay(p);
             effects.getTitles().showTitle(RTPEffect_Titles.RTP_TITLE_TYPE.NODELAY, p, p.getLocation(), 0, 0);
@@ -108,7 +137,7 @@ public class RTPTeleport {
 
     public boolean beforeTeleportDelay(Player p, int delay) { //Only Delays should call this
         RTP_TeleportPreEvent event = new RTP_TeleportPreEvent(p);
-        getPl().getServer().getPluginManager().callEvent(event);
+        Bukkit.getPluginManager().callEvent(event);
         if (!event.isCancelled()) {
             effects.getSounds().playDelay(p);
             effects.getTitles().showTitle(RTPEffect_Titles.RTP_TITLE_TYPE.DELAY, p, p.getLocation(), 0, delay);
@@ -137,26 +166,13 @@ public class RTPTeleport {
         effects.getTitles().showTitle(RTPEffect_Titles.RTP_TITLE_TYPE.FAILED, p, p.getLocation(), 0, 0);
         if (effects.getTitles().sendMsg(RTPEffect_Titles.RTP_TITLE_TYPE.FAILED))
             if (p == sendi)
-                MessagesCore.FAILED_NOTSAFE.send(p, BetterRTP.getInstance().getRTP().maxAttempts);
+                MessagesCore.FAILED_NOTSAFE.send(
+                        p, runtime.runtimeSettings().maxAttempts());
             else
                 MessagesCore.OTHER_NOTSAFE.send(sendi, Arrays.asList(
-                        BetterRTP.getInstance().getRTP().maxAttempts,
+                        runtime.runtimeSettings().maxAttempts(),
                         p.getName()));
     }
-
-    //Processing
-
-    /*private List<CompletableFuture<Chunk>> getChunks(Location loc) { //List all chunks in range to load
-        List<CompletableFuture<Chunk>> asyncChunks = new ArrayList<>();
-        int range = Math.round(Math.max(0, Math.min(16, getPl().getSettings().getPreloadRadius())));
-        for (int x = -range; x <= range; x++)
-            for (int z = -range; z <= range; z++) {
-                Location locLoad = new Location(loc.getWorld(), loc.getX() + (x * 16), loc.getY(), loc.getZ() + (z * 16));
-                CompletableFuture<Chunk> chunk = PaperLib.getChunkAtAsync(locLoad, true);
-                asyncChunks.add(chunk);
-            }
-        return asyncChunks;
-    }*/
 
     private void sendSuccessMsg(CommandSender sendi, String player, Location loc, WorldPlayer wPlayer, boolean sameAsPlayer, int attempts) {
         if (sameAsPlayer) {
@@ -169,10 +185,6 @@ public class RTPTeleport {
     }
 
     private boolean sendStatusMessage() {
-        return getPl().getSettings().isStatusMessages();
-    }
-
-    private BetterRTP getPl() {
-        return BetterRTP.getInstance();
+        return runtime.pluginSettings().isStatusMessages();
     }
 }

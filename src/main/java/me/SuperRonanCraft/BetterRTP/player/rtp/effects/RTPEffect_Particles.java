@@ -2,30 +2,37 @@ package me.SuperRonanCraft.BetterRTP.player.rtp.effects;
 
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.references.file.FileOther;
-import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
 import org.bukkit.Location;
+import org.bukkit.Particle;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
-import xyz.xenondevs.particle.ParticleEffect;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 //---
-//Credit to @ByteZ1337 for ParticleLib - https://github.com/ByteZ1337/ParticleLib
-//
-//Use of particle creation
-//---
-
 public class RTPEffect_Particles {
 
     private boolean enabled;
-    private final List<ParticleEffect> effects = new ArrayList<>();
+    private final List<Particle> effects = new ArrayList<>();
     private String shape;
     private final int precision = 16;
 
-    //Some particles act very differently and might not care how they are shaped before animating, ex: EXPLOSION_NORMAL
+    private static final Map<String, String> LEGACY_PARTICLE_NAMES = Map.ofEntries(
+            Map.entry("EXPLOSION_NORMAL", "POOF"),
+            Map.entry("EXPLOSION_LARGE", "EXPLOSION"),
+            Map.entry("EXPLOSION_HUGE", "EXPLOSION_EMITTER"),
+            Map.entry("FIREWORKS_SPARK", "FIREWORK"),
+            Map.entry("WATER_BUBBLE", "BUBBLE"),
+            Map.entry("WATER_SPLASH", "SPLASH"),
+            Map.entry("TOWN_AURA", "MYCELIUM"),
+            Map.entry("SPELL_WITCH", "WITCH"),
+            Map.entry("VILLAGER_ANGRY", "ANGRY_VILLAGER"),
+            Map.entry("VILLAGER_HAPPY", "HAPPY_VILLAGER"));
+
     public static String[] shapeTypes = {
             "SCAN", //Body scan
             "EXPLODE", //Make an explosive entrance
@@ -35,6 +42,7 @@ public class RTPEffect_Particles {
     void load() {
         FileOther.FILETYPE config = getPl().getFiles().getType(FileOther.FILETYPE.EFFECTS);
         enabled = config.getBoolean("Particles.Enabled");
+        effects.clear();
         if (!enabled) return;
         //Enabled? Load all this junk
         List<String> types;
@@ -44,21 +52,20 @@ public class RTPEffect_Particles {
             types = new ArrayList<>();
             types.add(config.getString("Particles.Type"));
         }
-        String typeTrying = null;
-        try {
-            for (String type : types) {
-                typeTrying = type;
-                effects.add(ParticleEffect.valueOf(type.toUpperCase()));
+        for (String configuredType : types) {
+            Particle particle = resolve(configuredType);
+            if (particle == null) {
+                getPl().getLogger().warning(
+                        "Unknown or data-dependent particle '" + configuredType
+                                + "' in effects.yml; entry ignored. Use '/rtp info particles'.");
+            } else {
+                effects.add(particle);
             }
-        } catch (IllegalArgumentException | NullPointerException e) {
-            effects.clear();
-            effects.add(ParticleEffect.ASH);
-            getPl().getLogger().severe("The particle '" + typeTrying + "' doesn't exist! Default particle enabled... " +
-                    "Try using '/rtp info particles' to get a list of available particles");
-        } catch (ExceptionInInitializerError | NoClassDefFoundError e2) {
-            effects.clear();
-            getPl().getLogger().severe("The particle '" + typeTrying + "' created a fatal error when loading particles! Your MC version isn't supported!");
-            enabled = false;
+        }
+        if (effects.isEmpty()) {
+            effects.add(Particle.ASH);
+            getPl().getLogger().warning(
+                    "No usable particles were configured; using ASH as a safe default.");
         }
         shape = config.getString("Particles.Shape").toUpperCase();
         if (!Arrays.asList(shapeTypes).contains(shape)) {
@@ -70,32 +77,31 @@ public class RTPEffect_Particles {
 
     public void display(Player p) {
         if (!enabled) return;
-        AsyncHandler.async(() -> {
-            try { //Incase the library errors out
-                switch (shape) {
-                    case "TELEPORT":
-                        partTeleport(p);
-                        break;
-                    case "EXPLODE":
-                        partExplosion(p);
-                        break;
-                    default: //Super redundant, but... just future proofing
-                    case "SCAN":
-                        partScan(p);
-                        break;
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
+        try {
+            switch (shape) {
+                case "TELEPORT":
+                    partTeleport(p);
+                    break;
+                case "EXPLODE":
+                    partExplosion(p);
+                    break;
+                default:
+                case "SCAN":
+                    partScan(p);
+                    break;
             }
-        });
+        } catch (Exception e) {
+            getPl().getLogger().log(java.util.logging.Level.WARNING,
+                    "Unable to display RTP particles for " + p.getName(), e);
+        }
     }
 
     private void partScan(Player p) { //Particles with negative velocity
         Location loc = p.getLocation().add(new Vector(0, 1.75, 0));
         for (int index = 1; index < precision; index++) {
             Vector vec = getVecCircle(index);
-            for (ParticleEffect effect : effects) {
-                effect.display(loc.clone().add(vec), new Vector(0, -0.125, 0), .15f, 0, null, p);
+            for (Particle effect : effects) {
+                spawnDirectional(p, effect, loc.clone().add(vec), new Vector(0, -0.125, 0), .15);
             }
         }
     }
@@ -106,8 +112,8 @@ public class RTPEffect_Particles {
             for (int index = 1; index < precision; index++) {
                 //double yran = ran.nextGaussian() * pHeight;
                 Vector vec = getVecCircle(index).add(new Vector(0, y, 0));
-                for (ParticleEffect effect : effects) {
-                    effect.display(loc.clone().add(vec), p);
+                for (Particle effect : effects) {
+                    p.spawnParticle(effect, loc.clone().add(vec), 1);
                 }
             }
     }
@@ -116,10 +122,32 @@ public class RTPEffect_Particles {
         Location loc = p.getLocation().add(new Vector(0, 1, 0));
         for (int index = 1; index < precision; index++) {
             Vector vec = getVecCircle(index);
-            for (ParticleEffect effect : effects) {
-                effect.display(loc.clone().add(vec), vec, 1.5f, 0, null, p);
+            for (Particle effect : effects) {
+                spawnDirectional(p, effect, loc.clone().add(vec), vec, 1.5);
             }
         }
+    }
+
+    static Particle resolve(String configuredName) {
+        if (configuredName == null || configuredName.isBlank()) {
+            return null;
+        }
+        String normalized = configuredName.toUpperCase(Locale.ROOT);
+        normalized = LEGACY_PARTICLE_NAMES.getOrDefault(normalized, normalized);
+        try {
+            Particle particle = Particle.valueOf(normalized);
+            return particle.getDataType() == Void.class ? particle : null;
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
+    }
+
+    private void spawnDirectional(
+            Player player, Particle particle, Location location,
+            Vector direction, double speed) {
+        player.spawnParticle(
+                particle, location, 0,
+                direction.getX(), direction.getY(), direction.getZ(), speed);
     }
 
     private Vector getVecCircle(int index) {

@@ -1,3 +1,5 @@
+Config-Version: 4
+
 ## These are a list of placeholders for your use, Editting these will do nothing!
 betterrtp_count: 'Get total amount of rtp''s done'
 betterrtp_cooldown: 'Get cooldown in current world'

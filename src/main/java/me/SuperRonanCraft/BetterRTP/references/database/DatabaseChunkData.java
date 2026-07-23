@@ -1,6 +1,6 @@
 package me.SuperRonanCraft.BetterRTP.references.database;
 
-import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
+import me.SuperRonanCraft.BetterRTP.references.helpers.BiomeHelper;
 import org.bukkit.Chunk;
 import org.bukkit.block.Biome;
 
@@ -41,7 +41,11 @@ public class DatabaseChunkData extends SQLite {
 
 
     public void addChunk(Chunk chunk, int maxy, Biome biome) {
-        AsyncHandler.async(() -> {
+        String worldName = chunk.getWorld().getName();
+        int chunkX = chunk.getX();
+        int chunkZ = chunk.getZ();
+        String biomeName = BiomeHelper.name(biome);
+        SQLiteExecutor.executor().submit(() -> {
             String pre = "INSERT OR REPLACE INTO ";
             String sql = pre + tables.get(0) + " ("
                     + COLUMNS.WORLD.name + ", "
@@ -51,10 +55,10 @@ public class DatabaseChunkData extends SQLite {
                     + COLUMNS.MAX_Y.name + " "
                     + ") VALUES(?, ?, ?, ?, ?)";
             List<Object> params = new ArrayList<Object>() {{
-                add(chunk.getWorld().getName());
-                add(chunk.getX());
-                add(chunk.getZ());
-                add(biome.name());
+                add(worldName);
+                add(chunkX);
+                add(chunkZ);
+                add(biomeName);
                 add(maxy);
             }};
             sqlUpdate(sql, params);

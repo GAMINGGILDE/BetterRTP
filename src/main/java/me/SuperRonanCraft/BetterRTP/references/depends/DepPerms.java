@@ -16,15 +16,13 @@ public class DepPerms {
     }
 
     public void register() {
-        try {
-            if (BetterRTP.getInstance().getServer().getPluginManager().isPluginEnabled("Vault")) {
-                RegisteredServiceProvider<Permission> permissionProvider = BetterRTP.getInstance().getServer()
-                        .getServicesManager().getRegistration(Permission.class);
+        p = null;
+        if (BetterRTP.getInstance().getServer().getPluginManager().isPluginEnabled("Vault")) {
+            RegisteredServiceProvider<Permission> permissionProvider = BetterRTP.getInstance().getServer()
+                    .getServicesManager().getRegistration(Permission.class);
+            if (permissionProvider != null) {
                 p = permissionProvider.getProvider();
-            } else
-                p = null;
-        } catch (NullPointerException e) {
-            //Vault but no Perms
+            }
         }
     }
 }

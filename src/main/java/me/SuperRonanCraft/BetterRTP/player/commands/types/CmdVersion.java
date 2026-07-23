@@ -18,7 +18,7 @@ public class CmdVersion implements RTPCommand, RTPCommandHelpable {
     }
 
     public void execute(CommandSender sendi, String label, String[] args) {
-        Message_RTP.sms(sendi, "&aVersion #&e" + BetterRTP.getInstance().getDescription().getVersion());
+        Message_RTP.sms(sendi, "&aVersion #&e" + BetterRTP.getInstance().getPluginMeta().getVersion());
     }
 
     public List<String> tabComplete(CommandSender sendi, String[] args) {

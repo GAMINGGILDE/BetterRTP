@@ -12,13 +12,13 @@ public class RTP_Lands implements RegionPluginCheck {
     // Lands (v6.28.13)
     // https://www.spigotmc.org/resources/lands.53313/
     public boolean check(Location loc) {
-        boolean result = true;
-        if (REGIONPLUGINS.LANDS.isEnabled())
+        if (REGIONPLUGINS.LANDS.isEnabled()) {
             try {
-                result = LandsIntegration.of(BetterRTP.getInstance()).getArea(loc) == null;
-            } catch (Exception e) {
-                e.printStackTrace();
+                return LandsIntegration.of(BetterRTP.getInstance()).getArea(loc) == null;
+            } catch (RuntimeException exception) {
+                return RegionPluginFailureHandler.reject("Lands", loc, exception);
             }
-        return result;
+        }
+        return true;
     }
 }

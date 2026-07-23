@@ -38,6 +38,10 @@ public interface RTPWorld_Defaulted {
         setAllFrom(BetterRTP.getInstance().getRTP().getRTPdefaultWorld());
     }
 
+    default void setupDefaults(RTPWorld defaults) {
+        setAllFrom(defaults);
+    }
+
     default void setAllFrom(RTPWorld rtpWorld) {
         setMaxRadius(rtpWorld.getMaxRadius());
         setMinRadius(rtpWorld.getMinRadius());

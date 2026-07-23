@@ -1,6 +1,8 @@
 package me.SuperRonanCraft.BetterRTP.references.customEvents;
 
 import me.SuperRonanCraft.BetterRTP.player.rtp.RTPPlayer;
+import me.SuperRonanCraft.BetterRTP.player.rtp.RtpRequest;
+import me.SuperRonanCraft.BetterRTP.player.rtp.RtpWorldSnapshot;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.RTPWorld;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -15,11 +17,13 @@ public class RTP_FindLocationEvent extends RTPEvent implements Cancellable {
     Location loc; //Used to force a location into find event
     int attempts;
     boolean cancelled;
+    RtpRequest request;
 
     public RTP_FindLocationEvent(RTPPlayer rtpPlayer) {
         this.p = rtpPlayer.getPlayer();
         this.world = rtpPlayer.getWorldPlayer();
         this.attempts = rtpPlayer.getAttempts();
+        this.request = rtpPlayer.getRequest();
     }
 
     //A location can be pushed in if a developer wants to inject a custom location
@@ -39,6 +43,14 @@ public class RTP_FindLocationEvent extends RTPEvent implements Cancellable {
 
     public Player getPlayer() {
         return p;
+    }
+
+    public RtpRequest getRequest() {
+        return request;
+    }
+
+    public RtpWorldSnapshot getWorldSnapshot() {
+        return request.world();
     }
 
     @Override

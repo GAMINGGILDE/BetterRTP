@@ -1,146 +1,290 @@
 package me.SuperRonanCraft.BetterRTP.player.rtp;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.logging.Level;
-
+import lombok.Getter;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
+import me.SuperRonanCraft.BetterRTP.references.customEvents.RTP_FailedEvent;
+import me.SuperRonanCraft.BetterRTP.references.customEvents.RTP_FindLocationEvent;
+import me.SuperRonanCraft.BetterRTP.references.depends.DepEconomy;
+import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP_Check;
+import me.SuperRonanCraft.BetterRTP.references.messages.MessagesCore;
+import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueRange;
+import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPlayer;
+import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
 import org.bukkit.Bukkit;
-import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import io.papermc.lib.PaperLib;
-import lombok.Getter;
-import me.SuperRonanCraft.BetterRTP.BetterRTP;
-import me.SuperRonanCraft.BetterRTP.references.customEvents.RTP_FailedEvent;
-import me.SuperRonanCraft.BetterRTP.references.customEvents.RTP_FindLocationEvent;
-import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP_Check;
-import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueData;
-import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueHandler;
-import me.SuperRonanCraft.BetterRTP.references.rtpinfo.RandomLocation;
-import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPlayer;
-import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
+import java.util.concurrent.CompletableFuture;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
 
+/**
+ * Holds the state of one teleport request and advances it across the Folia
+ * entity, region and async schedulers.
+ */
 public class RTPPlayer {
 
-    @Getter private final Player player;
     private final RTP settings;
-    @Getter WorldPlayer worldPlayer;
-    @Getter RTP_TYPE type;
-    @Getter int attempts;
-    //List<Location> attemptedLocations = new ArrayList<>();
+    @Getter private final WorldPlayer worldPlayer;
+    @Getter private final RtpRequest request;
+    private final AtomicInteger attempts = new AtomicInteger();
+    private final AtomicBoolean finished = new AtomicBoolean();
+    private volatile RTPTransaction transaction;
+    private final Set<CompletableFuture<?>> pendingFutures = ConcurrentHashMap.newKeySet();
+    private final Set<ScheduledTask> pendingTasks = ConcurrentHashMap.newKeySet();
+    private final QueueRange queueRange;
+    private final List<String> blockedBlocks;
+    private final RtpCandidateFinder candidateFinder;
 
-    RTPPlayer(Player player, RTP settings, WorldPlayer worldPlayer, RTP_TYPE type) {
-        this.player = player;
+    RTPPlayer(RTP settings, WorldPlayer worldPlayer) {
+        this(settings, RtpRequest.from(worldPlayer), worldPlayer,
+                new RtpCandidateFinder(settings.queue()));
+    }
+
+    RTPPlayer(
+            RTP settings, RtpRequest request, WorldPlayer worldPlayer,
+            RtpCandidateFinder candidateFinder) {
         this.settings = settings;
         this.worldPlayer = worldPlayer;
-        this.type = type;
+        this.request = request;
+        this.queueRange = QueueRange.from(request.world());
+        this.blockedBlocks = settings.getBlockList() == null
+                ? List.of() : List.copyOf(settings.getBlockList());
+        this.candidateFinder = candidateFinder;
     }
 
-    void randomlyTeleport(CommandSender sendi) {
-        if (attempts >= settings.maxAttempts) //Cancel out, too many tries
-            metMax(sendi, player);
-        else { //Try again to find a safe location
-            //Find a location from another Plugin
-            RTP_FindLocationEvent event = new RTP_FindLocationEvent(this); //Find an external plugin location
-            Bukkit.getServer().getPluginManager().callEvent(event);
-            //Async Location finder
-            if (event.isCancelled()) {
-                randomlyTeleport(sendi);
-                attempts++;
+    public Player getPlayer() {
+        return request.player();
+    }
+
+    public UUID getPlayerId() {
+        return request.playerId();
+    }
+
+    public RTP_TYPE getType() {
+        return request.type();
+    }
+
+    public int getAttempts() {
+        return attempts.get();
+    }
+
+    void randomlyTeleport(CommandSender sender) {
+        if (!isActive()) {
+            return;
+        }
+        if (attempts.get() >= settings.runtimeSettings().maxAttempts()) {
+            fail(sender);
+            return;
+        }
+
+        attempts.incrementAndGet();
+        RTP_FindLocationEvent event = new RTP_FindLocationEvent(this);
+        Bukkit.getPluginManager().callEvent(event);
+        if (event.isCancelled()) {
+            finish();
+            return;
+        }
+
+        Location suppliedLocation = event.getLocation();
+        AsyncHandler.async(() -> findCandidate(sender, suppliedLocation));
+    }
+
+    private void findCandidate(CommandSender sender, Location suppliedLocation) {
+        if (!isActive()) {
+            return;
+        }
+
+        try {
+            Location candidate = candidateFinder.select(
+                    suppliedLocation, request.world(), queueRange);
+
+            if (candidate == null || candidate.getWorld() == null) {
+                retry(sender);
                 return;
             }
-            AsyncHandler.async(() -> {
-                Location loc;
-                if (event.getLocation() != null) // && WorldPlayer.checkIsValid(event.getLocation(), pWorld))
-                    loc = event.getLocation();
-                else {
-                    QueueData queueData = QueueHandler.getRandomAsync(worldPlayer);
-                    //BetterRTP.getInstance().getLogger().warning("Center x " + worldPlayer.getCenterX());
-                    if (queueData != null)
-                        loc = queueData.getLocation();
-                    else
-                        loc = RandomLocation.generateLocation(worldPlayer);
-                }
-                attempts++; //Add an attempt
-                if (loc == null) {
-                    AsyncHandler.syncAtEntity(player, () -> randomlyTeleport(sendi));
+            loadCandidateChunk(sender, candidate);
+        } catch (Throwable throwable) {
+            settings.logger().log(Level.WARNING, "Unable to generate an RTP candidate", throwable);
+            retry(sender);
+        }
+    }
+
+    private void loadCandidateChunk(CommandSender sender, Location candidate) {
+        AsyncHandler.syncAtLocation(candidate, () -> {
+            if (!isActive()) {
+                return;
+            }
+
+            CompletableFuture<?> chunkFuture;
+            try {
+                chunkFuture = candidate.getWorld().getChunkAtAsync(candidate);
+            } catch (Throwable throwable) {
+                settings.logger().log(Level.WARNING,
+                        "Unable to start loading an RTP chunk at " + candidate, throwable);
+                retry(sender);
+                return;
+            }
+
+            track(chunkFuture.orTimeout(
+                    settings.pluginSettings().getChunkLoadTimeoutSeconds(), TimeUnit.SECONDS))
+                    .whenComplete((chunk, throwable) -> {
+                if (throwable != null) {
+                    settings.logger().log(Level.WARNING,
+                            "Unable to load an RTP chunk at " + candidate, throwable);
+                    retry(sender);
                     return;
                 }
-                //Load chunk and find out if safe location (asynchronously)
-                AsyncHandler.syncAtLocation(loc, () -> {
-                    try { //Prior to 1.12 this async chunk will NOT work
-                        CompletableFuture<Chunk> chunk = PaperLib.getChunkAtAsync(loc);
-                        chunk.whenComplete((result, throwable) -> {
-                            if (throwable != null) {
-                                getPl().getLogger().log(Level.WARNING,
-                                        "Unable to load a candidate RTP chunk at " + loc, throwable);
-                                AsyncHandler.syncAtEntity(player, () -> randomlyTeleport(sendi));
-                                return;
-                            }
-                            AsyncHandler.syncAtLocation(loc, () -> attempt(sendi, loc));
-                        });
-                    } catch (IllegalStateException e) {
-                        //Legacy non-async support
-                        attempt(sendi, loc);
-                    } catch (Throwable throwable) {
-                        getPl().getLogger().log(Level.WARNING,
-                                "Unable to load a candidate RTP chunk at " + loc, throwable);
-                        AsyncHandler.syncAtEntity(player, () -> randomlyTeleport(sendi));
-                    }
-                });
+                AsyncHandler.syncAtLocation(candidate, () -> validateCandidate(sender, candidate));
             });
+        });
+    }
+
+    private void validateCandidate(CommandSender sender, Location candidate) {
+        if (!isActive()) {
+            return;
+        }
+
+        try {
+            Location safeLocation = candidateFinder.validate(
+                    candidate, request.world(), blockedBlocks);
+
+            if (safeLocation == null) {
+                retry(sender);
+                return;
+            }
+
+            safeLocation.add(0.5, 0, 0.5);
+            AsyncHandler.syncAtEntity(getPlayer(), () -> completeTeleport(sender, safeLocation));
+        } catch (Throwable throwable) {
+            settings.logger().log(Level.WARNING,
+                    "Unable to validate an RTP candidate at " + candidate, throwable);
+            retry(sender);
         }
     }
 
-    private void attempt(CommandSender sendi, Location loc) {
-        Location tpLoc;
-        tpLoc = RandomLocation.getSafeLocation(worldPlayer.getWorldtype(), worldPlayer.getWorld(), loc, worldPlayer.getMinY(), worldPlayer.getMaxY(), worldPlayer.getBiomes());
-        //attemptedLocations.add(loc);
-        //Valid location?
-        if (tpLoc != null && checkDepends(tpLoc)) {
-            tpLoc.add(0.5, 0, 0.5); //Center location
-            Location safeLocation = tpLoc;
-            AsyncHandler.syncAtEntity(player, () -> completeTeleport(sendi, safeLocation));
-        } else {
-            QueueHandler.remove(loc);
-            AsyncHandler.syncAtEntity(player, () -> randomlyTeleport(sendi));
+    private void completeTeleport(CommandSender sender, Location location) {
+        if (!isActive()) {
+            return;
+        }
+
+        Player player = getPlayer();
+        DepEconomy.Reservation reservation = settings.economy().reserve(request);
+        if (!reservation.successful()) {
+            notifyReservationFailure(sender, reservation.failure());
+            finish();
+            return;
+        }
+
+        boolean applyCooldown = request.options().applyCooldown()
+                && HelperRTP_Check.applyCooldown(player);
+        transaction = new RTPTransaction(
+                () -> {
+                    try {
+                        reservation.commitHunger();
+                    } finally {
+                        if (applyCooldown) {
+                            settings.cooldowns().add(player, request.world().world());
+                        }
+                    }
+                },
+                reservation::rollback);
+
+        location.setYaw(player.getLocation().getYaw());
+        location.setPitch(player.getLocation().getPitch());
+        settings.getTeleport().sendPlayer(sender, this, location);
+    }
+
+    private void notifyReservationFailure(CommandSender sender, DepEconomy.Failure failure) {
+        MessagesCore message = failure == DepEconomy.Failure.HUNGER
+                ? MessagesCore.FAILED_HUNGER
+                : MessagesCore.FAILED_PRICE;
+        message.send(getPlayer(), worldPlayer);
+        if (sender != getPlayer()) {
+            AsyncHandler.syncAtSender(sender, () -> message.send(sender, worldPlayer));
         }
     }
 
-    private void completeTeleport(CommandSender sendi, Location tpLoc) {
-        if (getPl().getEco().charge(player, worldPlayer)) {
-            //Successfully found a safe location, set cooldown and teleport player.
-            if (worldPlayer.getPlayerInfo().isApplyCooldown() && HelperRTP_Check.applyCooldown(player))
-                getPl().getCooldowns().add(player, worldPlayer.getWorld());
-            tpLoc.setYaw(player.getLocation().getYaw());
-            tpLoc.setPitch(player.getLocation().getPitch());
-            settings.teleport.sendPlayer(sendi, player, tpLoc, worldPlayer, attempts, type);
-        } else {
-            if (worldPlayer.getPlayerInfo().applyCooldown)
-                getPl().getCooldowns().removeCooldown(player, worldPlayer.getWorld());
-            getPl().getPInfo().getRtping().remove(player);
+    private void retry(CommandSender sender) {
+        if (isActive()) {
+            AsyncHandler.syncAtEntity(getPlayer(), () -> randomlyTeleport(sender));
         }
     }
 
-    // Compressed code for MaxAttempts being met
-    private void metMax(CommandSender sendi, Player p) {
-        settings.teleport.failedTeleport(p, sendi);
-        getPl().getCooldowns().removeCooldown(p, worldPlayer.getWorld());
-        getPl().getPInfo().getRtping().remove(p);
-        //RTP Failed Event
-        Bukkit.getServer().getPluginManager().callEvent(new RTP_FailedEvent(this));
+    private void fail(CommandSender sender) {
+        if (!finished.compareAndSet(false, true)) {
+            return;
+        }
+        try {
+            settings.getTeleport().failedTeleport(getPlayer(), sender);
+            Bukkit.getPluginManager().callEvent(new RTP_FailedEvent(this));
+        } finally {
+            closeSession();
+        }
     }
 
-    /**
-     * @param loc Location to check
-     * @return True if the location is valid
-     */
-    public static boolean checkDepends(Location loc) {
-        return RTPPluginValidation.checkLocation(loc);
+    void cancel() {
+        finish();
     }
 
-    private BetterRTP getPl() {
-        return BetterRTP.getInstance();
+    <T> CompletableFuture<T> track(CompletableFuture<T> future) {
+        pendingFutures.add(future);
+        future.whenComplete((result, throwable) -> pendingFutures.remove(future));
+        return future;
+    }
+
+    void track(ScheduledTask task) {
+        if (task != null) {
+            pendingTasks.add(task);
+        }
+    }
+
+    void finish() {
+        if (finished.compareAndSet(false, true)) {
+            try {
+                RTPTransaction currentTransaction = transaction;
+                if (currentTransaction != null) {
+                    currentTransaction.rollback();
+                }
+            } finally {
+                closeSession();
+            }
+        }
+    }
+
+    void completeSuccessfully() {
+        if (finished.compareAndSet(false, true)) {
+            try {
+                RTPTransaction currentTransaction = transaction;
+                if (currentTransaction != null) {
+                    currentTransaction.commit();
+                }
+            } finally {
+                closeSession();
+            }
+        }
+    }
+
+    boolean isActive() {
+        return !finished.get() && settings.getSessions().isActive(this);
+    }
+
+    RTP runtime() {
+        return settings;
+    }
+
+    private void closeSession() {
+        pendingFutures.forEach(future -> future.cancel(true));
+        pendingFutures.clear();
+        pendingTasks.forEach(ScheduledTask::cancel);
+        pendingTasks.clear();
+        settings.getSessions().finished(this);
     }
 }

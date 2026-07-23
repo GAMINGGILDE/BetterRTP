@@ -6,22 +6,19 @@ import me.SuperRonanCraft.BetterRTP.references.PermissionNode;
 import me.SuperRonanCraft.BetterRTP.references.messages.Message;
 import me.SuperRonanCraft.BetterRTP.references.messages.Message_RTP;
 import me.SuperRonanCraft.BetterRTP.references.web.LogUploader;
-import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.ComponentBuilder;
-import net.md_5.bungee.api.chat.HoverEvent;
-import net.md_5.bungee.api.chat.TextComponent;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 public class CmdLogger implements RTPCommand {
 
@@ -36,23 +33,24 @@ public class CmdLogger implements RTPCommand {
         String cmd = "/" + label + " " + String.join(" ", args);
         if (!upload) {
             if (sendi instanceof Player) {
-                TextComponent component = new TextComponent(Message.color("&7- &7Click to upload log to &flogs.ronanplugins.com"));
-                component.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, cmd + " _UPLOAD_"));
-                component.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ComponentBuilder(Message.color("&6Suggested command&f: &7" + "/betterrtp " + String.join(" ", args) + " _UPLOAD_")).create()));
-                ((Player) sendi).spigot().sendMessage(component);
+                Component component = Message.component("&7- &7Click to upload log to &flogs.ronanplugins.com")
+                        .clickEvent(ClickEvent.suggestCommand(cmd + " _UPLOAD_"))
+                        .hoverEvent(HoverEvent.showText(Message.component("&6Suggested command&f: &7"
+                                + "/betterrtp " + String.join(" ", args) + " _UPLOAD_")));
+                sendi.sendMessage(component);
             } else {
                 sendi.sendMessage("Execute `" + cmd + " _UPLOAD_`" + " to upload log to https://logs.ronanplugins.com");
             }
         } else {
-            CompletableFuture.runAsync(() -> {
+            me.SuperRonanCraft.BetterRTP.versions.AsyncHandler.async(() -> {
                 String key = LogUploader.post(BetterRTP.getInstance().getRtpLogger().getFile());
                 if (key == null) {
                     Message.sms(sendi, new ArrayList<>(Collections.singletonList("&cAn error occured attempting to upload log!")), null);
                 } else {
                     try {
-                        JSONObject json = (JSONObject) new JSONParser().parse(key);
-                        Message.sms(sendi, Arrays.asList(" ", Message.getPrefix(Message_RTP.msg) + "&aLog uploaded! &fView&7: &6https://logs.ronanplugins.com/" + json.get("key")), null);
-                    } catch (ParseException e) {
+                        String uploadKey = JsonParser.parseString(key).getAsJsonObject().get("key").getAsString();
+                        Message.sms(sendi, Arrays.asList(" ", Message.getPrefix(Message_RTP.msg) + "&aLog uploaded! &fView&7: &6https://logs.ronanplugins.com/" + uploadKey), null);
+                    } catch (JsonParseException | IllegalStateException e) {
                         throw new RuntimeException(e);
                     }
                 }

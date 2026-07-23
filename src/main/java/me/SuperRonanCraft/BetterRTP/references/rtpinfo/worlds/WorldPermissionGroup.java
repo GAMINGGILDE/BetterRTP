@@ -12,7 +12,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
-@SuppressWarnings("rawtypes")
 public class WorldPermissionGroup implements RTPWorld, RTPWorld_Defaulted {
     private boolean useWorldborder, RTPOnDeath;
     private int centerX, centerZ, maxRad, minRad, price, miny, maxy;
@@ -23,15 +22,23 @@ public class WorldPermissionGroup implements RTPWorld, RTPWorld_Defaulted {
     @Getter private final String groupName;
     private long cooldown;
 
-    public WorldPermissionGroup(String group, World world, Map.Entry fields) {
+    public WorldPermissionGroup(String group, World world, Map.Entry<?, ?> fields) {
+        this(group, world, fields,
+                BetterRTP.getInstance().getRTP().getRTPdefaultWorld());
+    }
+
+    public WorldPermissionGroup(
+            String group, World world, Map.Entry<?, ?> fields, RTPWorld defaults) {
         this.groupName = group;
         this.world = world;
-        setupDefaults();
+        setupDefaults(defaults);
 
         this.priority = 0;
         //Find Location and cache its values
-        for (Object hash2 : ((HashMap) fields.getValue()).entrySet()) {
-            Map.Entry hash3 = (Map.Entry) hash2;
+        if (!(fields.getValue() instanceof Map<?, ?> fieldValues)) {
+            return;
+        }
+        for (Map.Entry<?, ?> hash3 : fieldValues.entrySet()) {
             String field = hash3.getKey().toString();
             if (field.equalsIgnoreCase("Priority")) {
                 if (hash3.getValue().getClass() == Integer.class) {
@@ -65,7 +72,7 @@ public class WorldPermissionGroup implements RTPWorld, RTPWorld_Defaulted {
                 if (maxRad <= 0) {
                     Message_RTP.sms(Bukkit.getConsoleSender(),
                             "WARNING! Group '" + group + "' Maximum radius of '" + maxRad + "' is not allowed! Set to default value!");
-                    maxRad = BetterRTP.getInstance().getRTP().getRTPdefaultWorld().getMaxRadius();
+                    maxRad = defaults.getMaxRadius();
                 }
             }
             if (field.equalsIgnoreCase("MinRadius")) {
@@ -76,16 +83,15 @@ public class WorldPermissionGroup implements RTPWorld, RTPWorld_Defaulted {
                 if (minRad < 0 || minRad >= maxRad) {
                     Message_RTP.sms(Bukkit.getConsoleSender(),
                             "WARNING! Group '" + group + "' Minimum radius of '" + minRad + "' is not allowed! Set to default value!");
-                    minRad = BetterRTP.getInstance().getRTP().getRTPdefaultWorld().getMinRadius();
+                    minRad = defaults.getMinRadius();
                     if (minRad >= maxRad)
-                        maxRad = BetterRTP.getInstance().getRTP().getRTPdefaultWorld().getMaxRadius();
+                        maxRad = defaults.getMaxRadius();
                 }
             }
-            if (field.equalsIgnoreCase("Biomes")) {
-                if (hash3.getValue().getClass() == ArrayList.class) {
-                    this.biomes = new ArrayList<String>((ArrayList) hash3.getValue());
-                    BetterRTP.debug("- - Biomes: " + biomes);
-                }
+            if (field.equalsIgnoreCase("Biomes") && hash3.getValue() instanceof List<?> biomeValues) {
+                this.biomes = new ArrayList<>();
+                biomeValues.stream().map(String::valueOf).forEach(this.biomes::add);
+                BetterRTP.debug("- - Biomes: " + biomes);
             }
             if (FileOther.FILETYPE.ECO.getBoolean("Economy.Enabled"))
                 if (field.equalsIgnoreCase("Price")) {

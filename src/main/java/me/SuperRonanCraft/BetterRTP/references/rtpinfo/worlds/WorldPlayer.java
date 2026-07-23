@@ -4,12 +4,14 @@ import lombok.Getter;
 import me.SuperRonanCraft.BetterRTP.player.commands.RTP_SETUP_TYPE;
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.player.rtp.RTPSetupInformation;
+import me.SuperRonanCraft.BetterRTP.player.rtp.RtpSetupRequest;
 import me.SuperRonanCraft.BetterRTP.player.rtp.RTP_PlayerInfo;
 import me.SuperRonanCraft.BetterRTP.player.rtp.RTP_SHAPE;
 import me.SuperRonanCraft.BetterRTP.player.rtp.RTP_TYPE;
+import me.SuperRonanCraft.BetterRTP.player.rtp.RtpWorldSnapshot;
+import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.WorldBorder;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -27,9 +29,12 @@ public class WorldPlayer implements RTPWorld, RTPWorld_Defaulted {
     @Getter private final RTP_TYPE rtp_type;
     private final World world;
     private WORLD_TYPE world_type;
+    @Deprecated(forRemoval = false)
     public WorldPermissionGroup config = null;
     private RTP_SHAPE shape;
+    @Deprecated(forRemoval = false)
     public RTP_SETUP_TYPE setup_type = RTP_SETUP_TYPE.DEFAULT;
+    @Deprecated(forRemoval = false)
     public String setup_name;
 
     @Getter private boolean setup = false;
@@ -42,58 +47,61 @@ public class WorldPlayer implements RTPWorld, RTPWorld_Defaulted {
         this.playerInfo = setup_info.getPlayerInfo();
     }
 
+    public WorldPlayer(RtpSetupRequest setupRequest) {
+        this.sendi = setupRequest.sender();
+        this.player = setupRequest.player();
+        this.world = setupRequest.world();
+        this.rtp_type = setupRequest.type();
+        this.playerInfo = setupRequest.playerOptions().toLegacyPlayerInfo();
+    }
+
+    public WorldPlayer(RTPSetupInformation setupInfo, ResolvedRtpWorld resolvedWorld) {
+        this(setupInfo);
+        apply(resolvedWorld);
+    }
+
+    public WorldPlayer(RtpSetupRequest setupRequest, ResolvedRtpWorld resolvedWorld) {
+        this(setupRequest);
+        apply(resolvedWorld);
+    }
+
+    /**
+     * Compatibility entry point. New request setup should use {@link RtpWorldResolver}
+     * and the resolved constructor.
+     */
     public void setup(String setup_name, RTPWorld world, List<String> biomes) {
-        if (world instanceof WorldLocation) {
-            setup_type = RTP_SETUP_TYPE.LOCATION;
-        } else if (world instanceof WorldCustom) {
-            setup_type = RTP_SETUP_TYPE.CUSTOM_WORLD;
-        } else if (world instanceof WorldPermissionGroup)
-            setup_type = RTP_SETUP_TYPE.PERMISSIONGROUP;
-        this.setup_name = setup_name;
-        setUseWorldBorder(world.getUseWorldborder());
-        setRTPOnDeath(world.getRTPOnDeath());
+        WORLD_TYPE type = world_type == null ? HelperRTP.getWorldType(getWorld()) : world_type;
+        WorldPermissionGroup permissionGroup = world instanceof WorldPermissionGroup group ? group : null;
+        apply(RtpWorldResolver.resolve(
+                world,
+                getWorld(),
+                biomes,
+                BetterRTP.getInstance().getRTP().getRTPdefaultWorld().getMinRadius(),
+                type,
+                setup_name,
+                permissionGroup));
+    }
 
-        //BetterRTP.getInstance().getLogger().info("WorldPlayer Center x: " + CenterX);
-        setCenterX(world.getCenterX());
-        //BetterRTP.getInstance().getLogger().info("set to " + world.getCenterX());
-        //BetterRTP.getInstance().getLogger().info("is now " + CenterX);
-        setCenterZ(world.getCenterZ());
-        setMaxRadius(world.getMaxRadius());
-        setMinRadius(world.getMinRadius());
-        setShape(world.getShape());
-        if (world instanceof WorldDefault)
-            setPrice(((WorldDefault) world).getPrice(getWorld().getName()));
-        else
-            setPrice(world.getPrice());
-        List<String> list = new ArrayList<>(world.getBiomes());
-        if (biomes != null) {
-            list.clear();
-            list.addAll(biomes);
-        }
-        setBiomes(list);
-        //World border protection
-        if (getUseWorldborder()) {
-            WorldBorder border = getWorld().getWorldBorder();
-            int _borderRad = (int) border.getSize() / 2;
-            if (getMaxRadius() > _borderRad)
-                setMaxRadius(_borderRad);
-            setCenterX(border.getCenter().getBlockX());
-            setCenterZ(border.getCenter().getBlockZ());
-        }
-        //Make sure our borders will not cause an invalid integer
-        if (getMaxRadius() <= getMinRadius()) {
-            setMinRadius(BetterRTP.getInstance().getRTP().getRTPdefaultWorld().getMinRadius());
-            if (getMaxRadius() <= getMinRadius())
-                setMinRadius(0);
-        }
-        //MinY
-        setMinY(world.getMinY());
-        setMaxY(world.getMaxY());
-        //Cooldown
-        setCooldown(world.getCooldown());
+    public void apply(ResolvedRtpWorld resolvedWorld) {
+        Objects.requireNonNull(resolvedWorld, "resolvedWorld");
+        RtpWorldSnapshot settings = resolvedWorld.settings();
+        setup_type = resolvedWorld.setupType();
+        setup_name = resolvedWorld.setupName();
+        config = resolvedWorld.permissionGroup();
+        setUseWorldBorder(settings.useWorldBorder());
+        setRTPOnDeath(settings.rtpOnDeath());
+        setCenterX(settings.centerX());
+        setCenterZ(settings.centerZ());
+        setMaxRadius(settings.maxRadius());
+        setMinRadius(settings.minRadius());
+        setShape(settings.shape());
+        setPrice(settings.price());
+        setBiomes(new ArrayList<>(settings.biomes()));
+        setMinY(settings.minY());
+        setMaxY(settings.maxY());
+        setCooldown(settings.cooldown());
+        setWorldtype(settings.worldType());
         setup = true;
-
-        //BetterRTP.getInstance().getLogger().info("WorldPlayer Center x: " + CenterX);
     }
 
     public static boolean checkIsValid(Location loc, RTPWorld rtpWorld) { //Will check if a previously given location is valid
@@ -110,7 +118,7 @@ public class WorldPlayer implements RTPWorld, RTPWorld_Defaulted {
         int _zLMin = rtpWorld.getCenterZ() - rtpWorld.getMinRadius(); //|I-||
         int _zRMax = rtpWorld.getCenterZ() + rtpWorld.getMaxRadius(); //||-|I
         int _zRMin = rtpWorld.getCenterZ() + rtpWorld.getMinRadius(); //||-I|
-        int _zLoc = loc.getBlockX();
+        int _zLoc = loc.getBlockZ();
         return _zLoc >= _zLMax && (_zLoc <= _zLMin || _zLoc >= _zRMin) && _zLoc <= _zRMax;
     }
 
@@ -226,6 +234,14 @@ public class WorldPlayer implements RTPWorld, RTPWorld_Defaulted {
 
     public WorldPermissionGroup getConfig() {
         return this.config;
+    }
+
+    public RTP_SETUP_TYPE getSetupType() {
+        return setup_type;
+    }
+
+    public String getSetupName() {
+        return setup_name;
     }
 
     public WORLD_TYPE getWorldtype() {
