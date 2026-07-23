@@ -45,8 +45,26 @@ jobs:
           echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
 
-      - name: Release-JAR bauen
-        run: ./mvnw clean package --batch-mode --no-transfer-progress
+      - name: Release-JAR bauen und testen
+        run: ./mvnw clean verify --batch-mode --no-transfer-progress
+
+      - name: Paper 26.1.2 Smoke-Test
+        shell: bash
+        run: >-
+          bash .github/scripts/server-smoke-test.sh
+          "paper"
+          "https://fill-data.papermc.io/v1/objects/1d70b1dab9cf4a6de615209a536f3a45a2186240253c428213ce2188ab95e5f7/paper-26.1.2-74.jar"
+          "1d70b1dab9cf4a6de615209a536f3a45a2186240253c428213ce2188ab95e5f7"
+          "target/BetterRTP-${{ steps.release.outputs.version }}.jar"
+
+      - name: Folia 26.1.2 Smoke-Test
+        shell: bash
+        run: >-
+          bash .github/scripts/server-smoke-test.sh
+          "folia"
+          "https://fill-data.papermc.io/v1/objects/607afd1c3320008e1ffd2eaee6780ace4419d5f8c527b75e79f259be79ebf57b/folia-26.1.2-8.jar"
+          "607afd1c3320008e1ffd2eaee6780ace4419d5f8c527b75e79f259be79ebf57b"
+          "target/BetterRTP-${{ steps.release.outputs.version }}.jar"
 
       - name: Release-Dateien vorbereiten
         shell: bash

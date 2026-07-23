@@ -40,7 +40,7 @@ public class BetterRTP extends JavaPlugin {
     @Getter private final DatabaseHandler databaseHandler = new DatabaseHandler(settings::isQueueEnabled);
     @Getter private final Commands cmd = new Commands(this);
     @Getter private final RTP RTP = new RTP(
-            eco, settings, cooldowns, this::getLogger, this, this::getQueue);
+            eco, settings, cooldowns, this::getLogger, this, this::getQueue, this::isReloading);
     private final EventListener listener = new EventListener();
     @Getter private static BetterRTP instance;
     @Getter private final Files files = new Files();

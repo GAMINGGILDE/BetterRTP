@@ -25,7 +25,7 @@ public class Commands {
     public void load() {
         commands.clear();
         for (RTPCommandType cmd : RTPCommandType.values())
-           registerCommand(cmd.getCmd(), false);
+           registerCommand(cmd.createCommand(), false);
     }
 
     public void registerCommand(RTPCommand cmd, boolean forced) {

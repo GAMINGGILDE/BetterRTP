@@ -48,6 +48,12 @@ target/BetterRTP-4.0.0-SNAPSHOT.jar
 
 `./mvnw test` kompiliert das Projekt und führt die automatisierten Unit-Tests aus. Diese prüfen unter anderem die Kreis- und Quadratberechnung sowie die Erzeugung gültiger RTP-Koordinaten.
 
+Die internen Komponenten- und Schedulerregeln sind in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) beschrieben. Vor einer
+Veröffentlichung sollte die
+[`docs/RELEASE-CHECKLIST.md`](docs/RELEASE-CHECKLIST.md) vollständig
+abgearbeitet werden.
+
 ## Veröffentlichungen
 
 Versionierte Builds stehen unter [GitHub Releases](https://github.com/GAMINGGILDE/BetterRTP/releases) bereit. Ein Git-Tag im Format `v3.7`, `v4.0.0` oder `v4.0.0-rc.1` startet automatisch einen reproduzierbaren Release-Build. Das GitHub Release enthält die fertige Plugin-JAR und eine Datei mit ihrer SHA-256-Prüfsumme.

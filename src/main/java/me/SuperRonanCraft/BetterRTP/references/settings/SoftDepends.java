@@ -12,18 +12,27 @@ import java.util.logging.Level;
 public class SoftDepends {
 
     void load() {
+        load(BetterRTP.getInstance().getSettings().isDebug());
+    }
+
+    void load(boolean debugEnabled) {
         for (REGIONPLUGINS plugin : REGIONPLUGINS.values())
-            registerPlugin(plugin);
+            registerPlugin(plugin, debugEnabled);
     }
 
     public void registerPlugin(REGIONPLUGINS pl) {
+        registerPlugin(pl, BetterRTP.getInstance().getSettings().isDebug());
+    }
+
+    private void registerPlugin(REGIONPLUGINS pl, boolean debugEnabled) {
         FileOther.FILETYPE config = BetterRTP.getInstance().getFiles().getType(FileOther.FILETYPE.CONFIG);
         String pre = "Settings.Respect.";
         pl.getPlugin().setRespecting(config.getBoolean(pre + pl.getSetting_name()));
         if (pl.getPlugin().isRespecting())
             pl.getPlugin().setEnabled(Bukkit.getPluginManager().isPluginEnabled(pl.getPluginyml_name()));
         if (pl.getPlugin().isRespecting())
-            debug("Respecting `" + pl.getSetting_name() + "` was " + (pl.getPlugin().enabled ? "SUCCESSFULLY" : "NOT") + " registered");
+            debug(debugEnabled, "Respecting `" + pl.getSetting_name() + "` was "
+                    + (pl.getPlugin().enabled ? "SUCCESSFULLY" : "NOT") + " registered");
     }
 
 
@@ -35,8 +44,8 @@ public class SoftDepends {
         private boolean enabled;
     }
 
-    private void debug(String str) {
-        if (BetterRTP.getInstance().getSettings().isDebug())
+    private void debug(boolean enabled, String str) {
+        if (enabled)
             BetterRTP.getInstance().getLogger().log(Level.INFO, str);
     }
 }

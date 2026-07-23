@@ -1,75 +1,62 @@
 package me.SuperRonanCraft.BetterRTP.references.settings;
 
-import lombok.Getter;
 import me.SuperRonanCraft.BetterRTP.references.file.FileOther;
 
+/**
+ * Provides the current immutable configuration snapshot while preserving the
+ * public getters used by BetterRTP add-ons.
+ */
 public class Settings {
 
-    @Getter private volatile boolean debug;
-    @Getter private volatile boolean delayEnabled;
-    @Getter private volatile int delayTime;
-    @Getter private volatile boolean rtpOnFirstJoin_Enabled;
-    @Getter private volatile String rtpOnFirstJoin_World;
-    @Getter private volatile boolean rtpOnFirstJoin_SetAsRespawn;
-    @Getter private volatile boolean statusMessages; //Send more information about rtp
-    //Dependencies
     private final SoftDepends depends = new SoftDepends();
-    @Getter private volatile boolean locationEnabled;
-    @Getter private volatile boolean useLocationIfAvailable;
-    @Getter private volatile boolean locationNeedPermission;
-    @Getter private volatile boolean useLocationsInSameWorld;
-    @Getter private volatile boolean permissionGroupEnabled;
-    @Getter private volatile boolean queueEnabled;
-    @Getter private volatile int chunkLoadTimeoutSeconds;
-    @Getter private volatile int teleportTimeoutSeconds;
-    //Placeholders
-    @Getter private volatile String placeholder_true;
-    @Getter private volatile String placeholder_nopermission;
-    @Getter private volatile String placeholder_cooldown;
-    @Getter private volatile String placeholder_balance;
-    @Getter private volatile String placeholder_hunger;
-    @Getter private volatile String placeholder_timeDays;
-    @Getter private volatile String placeholder_timeHours;
-    @Getter private volatile String placeholder_timeMinutes;
-    @Getter private volatile String placeholder_timeSeconds;
-    @Getter private volatile String placeholder_timeZero;
-    @Getter private volatile String placeholder_timeInf;
-    @Getter private volatile String placeholder_timeSeparator_middle;
-    @Getter private volatile String placeholder_timeSeparator_last;
+    private volatile SettingsSnapshot snapshot = SettingsSnapshot.empty();
 
+    public void load() {
+        SettingsSnapshot loaded = SettingsSnapshot.from(
+                FileOther.FILETYPE.CONFIG.getConfig(),
+                FileOther.FILETYPE.LOCATIONS.getConfig(),
+                FileOther.FILETYPE.PLACEHOLDERS.getConfig());
+        depends.load(loaded.debug());
+        snapshot = loaded;
+    }
 
-    public void load() { //Load Settings
-        FileOther.FILETYPE config = FileOther.FILETYPE.CONFIG;
-        debug = config.getBoolean("Settings.Debugger");
-        delayEnabled = config.getBoolean("Settings.Delay.Enabled");
-        delayTime = config.getInt("Settings.Delay.Time");
-        rtpOnFirstJoin_Enabled = config.getBoolean("Settings.RtpOnFirstJoin.Enabled");
-        rtpOnFirstJoin_World = config.getString("Settings.RtpOnFirstJoin.World");
-        rtpOnFirstJoin_SetAsRespawn = config.getBoolean("Settings.RtpOnFirstJoin.SetAsRespawn");
-        statusMessages = config.getBoolean("Settings.StatusMessages");
-        permissionGroupEnabled = config.getBoolean("PermissionGroup.Enabled");
-        queueEnabled = config.getBoolean("Settings.Queue.Enabled");
-        chunkLoadTimeoutSeconds = Math.max(1, config.getInt("Settings.Timeouts.ChunkLoadSeconds"));
-        teleportTimeoutSeconds = Math.max(1, config.getInt("Settings.Timeouts.TeleportSeconds"));
-        locationEnabled = FileOther.FILETYPE.LOCATIONS.getBoolean("Enabled");
-        useLocationIfAvailable = FileOther.FILETYPE.LOCATIONS.getBoolean("UseLocationIfAvailable");
-        locationNeedPermission = FileOther.FILETYPE.LOCATIONS.getBoolean("RequirePermission");
-        useLocationsInSameWorld = FileOther.FILETYPE.LOCATIONS.getBoolean("UseLocationsInSameWorld");
-        //Placeholders
-        placeholder_true = FileOther.FILETYPE.PLACEHOLDERS.getString("Config.CanRTP.Success");
-        placeholder_nopermission = FileOther.FILETYPE.PLACEHOLDERS.getString("Config.CanRTP.NoPermission");
-        placeholder_cooldown = FileOther.FILETYPE.PLACEHOLDERS.getString("Config.CanRTP.Cooldown");
-        placeholder_balance = FileOther.FILETYPE.PLACEHOLDERS.getString("Config.CanRTP.Price");
-        placeholder_hunger = FileOther.FILETYPE.PLACEHOLDERS.getString("Config.CanRTP.Hunger");
-        placeholder_timeDays = FileOther.FILETYPE.PLACEHOLDERS.getString("Config.TimeFormat.Days");
-        placeholder_timeHours = FileOther.FILETYPE.PLACEHOLDERS.getString("Config.TimeFormat.Hours");
-        placeholder_timeMinutes = FileOther.FILETYPE.PLACEHOLDERS.getString("Config.TimeFormat.Minutes");
-        placeholder_timeSeconds = FileOther.FILETYPE.PLACEHOLDERS.getString("Config.TimeFormat.Seconds");
-        placeholder_timeZero = FileOther.FILETYPE.PLACEHOLDERS.getString("Config.TimeFormat.ZeroAll");
-        placeholder_timeInf = FileOther.FILETYPE.PLACEHOLDERS.getString("Config.TimeFormat.Infinite");
-        placeholder_timeSeparator_middle = FileOther.FILETYPE.PLACEHOLDERS.getString("Config.TimeFormat.Separator.Middle");
-        placeholder_timeSeparator_last = FileOther.FILETYPE.PLACEHOLDERS.getString("Config.TimeFormat.Separator.Last");
-        depends.load();
+    public SettingsSnapshot snapshot() {
+        return snapshot;
+    }
+
+    public boolean isDebug() { return snapshot.debug(); }
+    public boolean isDelayEnabled() { return snapshot.delayEnabled(); }
+    public int getDelayTime() { return snapshot.delayTime(); }
+    public boolean isRtpOnFirstJoin_Enabled() { return snapshot.rtpOnFirstJoinEnabled(); }
+    public String getRtpOnFirstJoin_World() { return snapshot.rtpOnFirstJoinWorld(); }
+    public boolean isRtpOnFirstJoin_SetAsRespawn() {
+        return snapshot.rtpOnFirstJoinSetAsRespawn();
+    }
+    public boolean isStatusMessages() { return snapshot.statusMessages(); }
+    public boolean isLocationEnabled() { return snapshot.locationEnabled(); }
+    public boolean isUseLocationIfAvailable() { return snapshot.useLocationIfAvailable(); }
+    public boolean isLocationNeedPermission() { return snapshot.locationNeedPermission(); }
+    public boolean isUseLocationsInSameWorld() { return snapshot.useLocationsInSameWorld(); }
+    public boolean isPermissionGroupEnabled() { return snapshot.permissionGroupEnabled(); }
+    public boolean isQueueEnabled() { return snapshot.queueEnabled(); }
+    public int getChunkLoadTimeoutSeconds() { return snapshot.chunkLoadTimeoutSeconds(); }
+    public int getTeleportTimeoutSeconds() { return snapshot.teleportTimeoutSeconds(); }
+    public String getPlaceholder_true() { return snapshot.placeholderTrue(); }
+    public String getPlaceholder_nopermission() { return snapshot.placeholderNoPermission(); }
+    public String getPlaceholder_cooldown() { return snapshot.placeholderCooldown(); }
+    public String getPlaceholder_balance() { return snapshot.placeholderBalance(); }
+    public String getPlaceholder_hunger() { return snapshot.placeholderHunger(); }
+    public String getPlaceholder_timeDays() { return snapshot.placeholderTimeDays(); }
+    public String getPlaceholder_timeHours() { return snapshot.placeholderTimeHours(); }
+    public String getPlaceholder_timeMinutes() { return snapshot.placeholderTimeMinutes(); }
+    public String getPlaceholder_timeSeconds() { return snapshot.placeholderTimeSeconds(); }
+    public String getPlaceholder_timeZero() { return snapshot.placeholderTimeZero(); }
+    public String getPlaceholder_timeInf() { return snapshot.placeholderTimeInfinite(); }
+    public String getPlaceholder_timeSeparator_middle() {
+        return snapshot.placeholderTimeSeparatorMiddle();
+    }
+    public String getPlaceholder_timeSeparator_last() {
+        return snapshot.placeholderTimeSeparatorLast();
     }
 
     public SoftDepends getsDepends() {

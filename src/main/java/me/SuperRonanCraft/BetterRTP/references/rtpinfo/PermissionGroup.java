@@ -2,6 +2,7 @@ package me.SuperRonanCraft.BetterRTP.references.rtpinfo;
 
 import lombok.Getter;
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
+import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.RTPWorld;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPermissionGroup;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
@@ -17,6 +18,10 @@ public class PermissionGroup {
     @Getter private final HashMap<String, WorldPermissionGroup> worlds = new HashMap<>();
 
     public PermissionGroup(Map.Entry<?, ?> fields) {
+        this(fields, BetterRTP.getInstance().getRTP().getRTPdefaultWorld());
+    }
+
+    public PermissionGroup(Map.Entry<?, ?> fields, RTPWorld defaults) {
         this.groupName = fields.getKey().toString();
 
         BetterRTP.debug("- Permission Group: " + groupName);
@@ -26,17 +31,17 @@ public class PermissionGroup {
             configuredWorlds = section.getValues(false);
         }
         if (configuredWorlds instanceof Map<?, ?> worldsByName) {
-            loadWorlds(worldsByName);
+            loadWorlds(worldsByName, defaults);
         } else if (configuredWorlds instanceof List<?> worldLists) {
             for (Object worldList : worldLists) {
                 if (worldList instanceof Map<?, ?> worldsByName) {
-                    loadWorlds(worldsByName);
+                    loadWorlds(worldsByName, defaults);
                 }
             }
         }
     }
 
-    private void loadWorlds(Map<?, ?> worldsByName) {
+    private void loadWorlds(Map<?, ?> worldsByName, RTPWorld defaults) {
         for (Map.Entry<?, ?> configuredWorld : worldsByName.entrySet()) {
             Object values = configuredWorld.getValue();
             if (values instanceof ConfigurationSection section) {
@@ -47,7 +52,8 @@ public class PermissionGroup {
             if (world != null) {
                 Map.Entry<?, ?> worldFields = new java.util.AbstractMap.SimpleImmutableEntry<>(
                         configuredWorld.getKey(), values);
-                WorldPermissionGroup permissionGroup = new WorldPermissionGroup(groupName, world, worldFields);
+                WorldPermissionGroup permissionGroup =
+                        new WorldPermissionGroup(groupName, world, worldFields, defaults);
                 this.worlds.put(configuredWorld.getKey().toString(), permissionGroup);
             } else {
                 BetterRTP.debug("- - The Permission Group '" + groupName + "'s world '"

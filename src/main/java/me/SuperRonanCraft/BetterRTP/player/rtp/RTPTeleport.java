@@ -166,10 +166,11 @@ public class RTPTeleport {
         effects.getTitles().showTitle(RTPEffect_Titles.RTP_TITLE_TYPE.FAILED, p, p.getLocation(), 0, 0);
         if (effects.getTitles().sendMsg(RTPEffect_Titles.RTP_TITLE_TYPE.FAILED))
             if (p == sendi)
-                MessagesCore.FAILED_NOTSAFE.send(p, runtime.maxAttempts);
+                MessagesCore.FAILED_NOTSAFE.send(
+                        p, runtime.runtimeSettings().maxAttempts());
             else
                 MessagesCore.OTHER_NOTSAFE.send(sendi, Arrays.asList(
-                        runtime.maxAttempts,
+                        runtime.runtimeSettings().maxAttempts(),
                         p.getName()));
     }
 

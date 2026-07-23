@@ -80,7 +80,7 @@ public class RTPPlayer {
         if (!isActive()) {
             return;
         }
-        if (attempts.get() >= settings.maxAttempts) {
+        if (attempts.get() >= settings.runtimeSettings().maxAttempts()) {
             fail(sender);
             return;
         }
