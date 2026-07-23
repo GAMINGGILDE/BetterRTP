@@ -43,7 +43,7 @@ Unter Windows kann stattdessen `mvnw.cmd clean package` verwendet werden.
 Das fertige, einschließlich seiner benötigten Bibliotheken gepackte Server-Plugin wird hier erzeugt:
 
 ```text
-target/BetterRTP-4.0.0-SNAPSHOT.jar
+target/BetterRTP-4.0.0.jar
 ```
 
 `./mvnw test` kompiliert das Projekt und führt die automatisierten Unit-Tests aus. Diese prüfen unter anderem die Kreis- und Quadratberechnung sowie die Erzeugung gültiger RTP-Koordinaten.
@@ -77,7 +77,7 @@ Der Build im Stammverzeichnis erzeugt ausschließlich das BetterRTP-Core-Plugin.
 ## Installation
 
 1. Stoppe den Minecraft-Server vollständig.
-2. Kopiere `target/BetterRTP-4.0.0-SNAPSHOT.jar` in das Verzeichnis `plugins` des Servers.
+2. Kopiere `target/BetterRTP-4.0.0.jar` in das Verzeichnis `plugins` des Servers.
 3. Entferne oder archiviere ältere BetterRTP-JARs, sodass nur eine Version geladen wird.
 4. Starte den Server und prüfe die erzeugte Konfiguration unter `plugins/BetterRTP`.
 5. Teste die Teleportation mit `/rtp`. Nach reinen Konfigurationsänderungen kann `/rtp reload` verwendet werden.

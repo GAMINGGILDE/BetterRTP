@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>de.gaminggilde</groupId>
     <artifactId>BetterRTP</artifactId>
-    <version>4.0.0-SNAPSHOT</version>
+    <version>4.0.0</version>
     <packaging>jar</packaging>
     <name>BetterRTP</name>
     <description>Random teleportation for modern Paper and Folia servers.</description>
