@@ -99,10 +99,11 @@ public class QueueHandler implements Listener { //Randomly queues up some safe l
 
     public void removeQueued(Location location) {
         if (!service.isEnabled()) return;
+        QueuePosition position = QueuePosition.capture(location);
         AsyncHandler.async(() -> {
-            if (service.remove(location)) {
-                debug.accept("-Removed a queue world=" + location.getWorld().getName()
-                        + ", x=" + location.getBlockX() + ", z=" + location.getBlockZ());
+            if (service.remove(position)) {
+                debug.accept("-Removed a queue world=" + position.worldName()
+                        + ", x=" + position.blockX() + ", z=" + position.blockZ());
             }
         });
     }

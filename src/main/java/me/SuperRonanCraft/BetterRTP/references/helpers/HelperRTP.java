@@ -24,6 +24,7 @@ import me.SuperRonanCraft.BetterRTP.player.rtp.RTP_TYPE;
 import me.SuperRonanCraft.BetterRTP.references.PermissionCheck;
 import me.SuperRonanCraft.BetterRTP.references.WarningHandler;
 import me.SuperRonanCraft.BetterRTP.references.messages.Message_RTP;
+import me.SuperRonanCraft.BetterRTP.references.messages.MessagesCore;
 import me.SuperRonanCraft.BetterRTP.references.messages.placeholder.Placeholders;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.PermissionGroup;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.RTPWorld;
@@ -84,18 +85,23 @@ public class HelperRTP {
                           @Nullable WorldLocation location,
                           @NotNull RTP_PlayerInfo playerInfo) {
         World requestedWorld = world;
+        String playerName = player.getName();
         AsyncHandler.syncAtEntity(player, () -> {
             World actualWorld = getActualWorld(player, requestedWorld, location);
             RTPSetupInformation setupInfo = new RTPSetupInformation(
                     actualWorld, sendi, player, true, biomes, rtpType, location, playerInfo);
             tpOnEntity(player, sendi, setupInfo);
-        });
+        }, () -> MessagesCore.NOTONLINE.send(sendi, playerName));
     }
 
     public static void tp(@NotNull Player player,
                           CommandSender sendi,
                           @NotNull RTPSetupInformation setup_info) {
-        AsyncHandler.syncAtEntity(player, () -> tpOnEntity(player, sendi, setup_info));
+        String playerName = player.getName();
+        AsyncHandler.syncAtEntity(
+                player,
+                () -> tpOnEntity(player, sendi, setup_info),
+                () -> MessagesCore.NOTONLINE.send(sendi, playerName));
     }
 
     private static void tpOnEntity(Player player, CommandSender sendi, RTPSetupInformation setup_info) {

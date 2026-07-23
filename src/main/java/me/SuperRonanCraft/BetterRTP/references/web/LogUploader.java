@@ -10,7 +10,9 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Scanner;
+import java.util.logging.Level;
 
+import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import org.jetbrains.annotations.Nullable;
 
 public class LogUploader {
@@ -44,7 +46,9 @@ public class LogUploader {
             }
 
             return response.toString();
-        } catch (IOException e) {
+        } catch (IOException exception) {
+            BetterRTP.getInstance().getLogger().log(
+                    Level.WARNING, "Unable to upload the BetterRTP command output", exception);
             return null;
         }
     }
@@ -77,8 +81,9 @@ public class LogUploader {
             }
 
             return response.toString();
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException exception) {
+            BetterRTP.getInstance().getLogger().log(
+                    Level.WARNING, "Unable to upload the BetterRTP log", exception);
             return null;
         }
         //getLogger().log(Level.INFO, "Response: " + response.toString());

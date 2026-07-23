@@ -99,8 +99,10 @@ public class PlaceholderAnalyzer {
         if (BetterRTP.getInstance().isPlaceholderAPI())
             try {
                 str = PlaceholderAPI.setPlaceholders(player, str);
-            } catch (Exception e) {
-                //Something went wrong with PAPI
+            } catch (RuntimeException exception) {
+                BetterRTP.getInstance().getLogger().log(
+                        java.util.logging.Level.WARNING,
+                        "PlaceholderAPI could not process a BetterRTP message", exception);
             }
         return str;
     }

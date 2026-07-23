@@ -14,7 +14,7 @@ public class WorldLoad {
         //BetterRTP.getInstance().getLogger().info("NEW WORLD!");
         if (loader != null)
             loader.cancel();
-        loader = AsyncHandler.syncLater(() -> {
+        loader = AsyncHandler.globalLater(() -> {
             BetterRTP.debug("New world `" + worldName + "` detected! Reloaded Databases!");
             BetterRTP.getInstance().getDatabaseHandler().refreshWorlds();
         }, 20L * 5);

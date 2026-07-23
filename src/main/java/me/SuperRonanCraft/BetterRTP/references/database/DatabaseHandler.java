@@ -33,7 +33,7 @@ public class DatabaseHandler {
             return;
         }
         SQLiteExecutor.start();
-        AsyncHandler.sync(() -> {
+        AsyncHandler.global(() -> {
             databaseCooldowns.setWorldNames(Bukkit.getWorlds().stream().map(World::getName).toList());
             databasePlayers.load();
             databaseCooldowns.load();
@@ -48,7 +48,7 @@ public class DatabaseHandler {
     }
 
     public void refreshWorlds() {
-        AsyncHandler.sync(() -> {
+        AsyncHandler.global(() -> {
             databaseCooldowns.setWorldNames(Bukkit.getWorlds().stream().map(World::getName).toList());
             databaseCooldowns.load();
         });

@@ -91,6 +91,10 @@ class ConfigurationMigratorTest {
         assertSection(main, "Overrides");
         assertSection(main, "WorldType");
         assertSection(main, "PermissionGroup.Groups");
+        assertTrue(main.isBoolean("Settings.Delay.CancelOnDamage"));
+        assertTrue(main.isBoolean("Settings.StatusMessages"));
+        assertTrue(main.getBoolean("Settings.StatusMessages"));
+        assertFalse(main.contains("Settings.PreloadRadius"));
         assertSection(loadResource("economy.yml"), "CustomWorlds.Prices");
         assertSection(loadResource("locations.yml"), "Locations");
     }

@@ -52,8 +52,11 @@ public class FileLanguage implements FileData {
                 config.setDefaults(languageDefaults);
                 config.options().copyDefaults(false);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Exception exception) {
+            plugin().getLogger().log(
+                    java.util.logging.Level.SEVERE,
+                    "Unable to load language file " + fileName, exception);
+            throw new IllegalStateException("Invalid BetterRTP language file: " + fileName, exception);
         }
     }
 

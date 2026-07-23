@@ -1,8 +1,6 @@
 package me.SuperRonanCraft.BetterRTP.references.rtpinfo;
 
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.RTPWorld;
-import org.bukkit.Location;
-
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
@@ -47,11 +45,11 @@ public final class QueueService {
         return repository.claim(databaseId);
     }
 
-    public QueueData save(Location location) {
-        return repository.save(location);
+    public QueueData save(QueuePosition position) {
+        return repository.save(position);
     }
 
-    public boolean remove(Location location) {
-        return isEnabled() && repository.remove(location);
+    public boolean remove(QueuePosition position) {
+        return isEnabled() && repository.remove(position);
     }
 }

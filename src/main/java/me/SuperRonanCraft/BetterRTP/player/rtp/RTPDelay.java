@@ -29,7 +29,14 @@ class RTPDelay implements Listener {
 
     private void delay(CommandSender sendi, int delay) {
         if (!rtp.runtime().getTeleport().beforeTeleportDelay(rtp.getPlayer(), delay)) {
-            task = AsyncHandler.syncLaterAtEntity(rtp.getPlayer(), run(sendi, this), delay * 20L);
+            task = AsyncHandler.syncLaterAtEntity(
+                    rtp.getPlayer(),
+                    run(sendi, this),
+                    () -> {
+                        HandlerList.unregisterAll(this);
+                        rtp.cancel();
+                    },
+                    delay * 20L);
             rtp.track(task);
             if (cancelOnMove || cancelOnDamage)
                 Bukkit.getPluginManager().registerEvents(this, rtp.runtime().eventOwner());

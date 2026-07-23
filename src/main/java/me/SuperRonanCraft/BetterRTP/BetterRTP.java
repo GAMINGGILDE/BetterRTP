@@ -29,6 +29,8 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
 
 public class BetterRTP extends JavaPlugin {
     @Getter private final Permissions perms = new Permissions();
@@ -56,6 +58,7 @@ public class BetterRTP extends JavaPlugin {
     @Getter private final WarningHandler warningHandler = new WarningHandler();
     @Getter private boolean PlaceholderAPI;
     @Getter private final RTPLogger rtpLogger = new RTPLogger();
+    private final AtomicBoolean reloading = new AtomicBoolean();
 
     @Override
     public void onEnable() {
@@ -91,11 +94,17 @@ public class BetterRTP extends JavaPlugin {
 
     @Override
     public boolean onCommand(CommandSender sendi, Command cmd, String label, String[] args) {
+        if (reloading.get()) {
+            Message_RTP.sms(sendi, "&eBetterRTP is currently reloading. Please try again shortly.");
+            return true;
+        }
         try {
             this.cmd.commandExecuted(sendi, label, args);
-        } catch (NullPointerException e) {
-            e.printStackTrace();
-            Message_RTP.sms(sendi, "&cERROR &7Seems like your Administrator did not update their language file!");
+        } catch (RuntimeException exception) {
+            getLogger().log(Level.SEVERE,
+                    "Unable to execute /" + label + " for " + sendi.getName(), exception);
+            Message_RTP.sms(sendi,
+                    "&cERROR &7The command could not be completed. Check the server log for details.");
         }
         return true;
     }
@@ -106,11 +115,60 @@ public class BetterRTP extends JavaPlugin {
     }
 
     public void reload(CommandSender sendi) {
-        RTP.shutdown();
-        queue.unload();
-        invs.closeAll();
-        loadAll();
-        MessagesCore.RELOAD.send(sendi);
+        if (!reloading.compareAndSet(false, true)) {
+            Message_RTP.sms(sendi, "&eBetterRTP is already reloading.");
+            return;
+        }
+        try {
+            RTP.shutdownForReload().whenComplete((ignored, cancellationFailure) ->
+                    AsyncHandler.global(() -> continueReload(sendi, cancellationFailure)));
+        } catch (RuntimeException exception) {
+            failReload(sendi, exception);
+        }
+    }
+
+    public boolean isReloading() {
+        return reloading.get();
+    }
+
+    private void continueReload(CommandSender sender, Throwable cancellationFailure) {
+        try {
+            if (cancellationFailure != null) {
+                getLogger().log(
+                        Level.WARNING,
+                        "One or more RTP sessions could not be cleanly cancelled",
+                        cancellationFailure);
+            }
+            queue.unload();
+            invs.closeAllOnEntitySchedulers().whenComplete((ignored, inventoryFailure) ->
+                    AsyncHandler.global(() -> finishReload(sender, inventoryFailure)));
+        } catch (RuntimeException exception) {
+            failReload(sender, exception);
+        }
+    }
+
+    private void finishReload(CommandSender sender, Throwable inventoryFailure) {
+        try {
+            if (inventoryFailure != null) {
+                getLogger().log(
+                        Level.WARNING,
+                        "One or more BetterRTP inventories could not be cleanly closed",
+                        inventoryFailure);
+            }
+            loadAll();
+            AsyncHandler.syncAtSender(sender, () -> MessagesCore.RELOAD.send(sender));
+        } catch (RuntimeException exception) {
+            failReload(sender, exception);
+        } finally {
+            reloading.set(false);
+        }
+    }
+
+    private void failReload(CommandSender sender, RuntimeException exception) {
+        getLogger().log(Level.SEVERE, "Unable to reload BetterRTP", exception);
+        AsyncHandler.syncAtSender(sender, () -> Message_RTP.sms(sender,
+                "&cBetterRTP could not be reloaded. Check the server log."));
+        reloading.set(false);
     }
 
     //(Re)Load all plugin systems/files/cache

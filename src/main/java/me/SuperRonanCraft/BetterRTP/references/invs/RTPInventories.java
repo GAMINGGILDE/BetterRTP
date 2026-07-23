@@ -7,6 +7,7 @@ import org.bukkit.entity.Player;
 import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
 
 import java.util.HashMap;
+import java.util.concurrent.CompletableFuture;
 
 public class RTPInventories {
 
@@ -21,17 +22,23 @@ public class RTPInventories {
     }
 
     public void closeAll() {
+        AsyncHandler.global(() -> closeAllOnEntitySchedulers());
+    }
+
+    public CompletableFuture<Void> closeAllOnEntitySchedulers() {
         BetterRTP main = BetterRTP.getInstance();
-        AsyncHandler.sync(() -> {
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                AsyncHandler.syncAtEntity(player, () -> {
+        CompletableFuture<?>[] closures = Bukkit.getOnlinePlayers().stream()
+                .map(player -> AsyncHandler.entityFuture(
+                        player,
+                        () -> {
                     if (main.getPInfo().playerExists(player)) {
                         player.closeInventory();
                     }
-                });
-            }
-            main.getPInfo().clearInvs();
-        });
+                        },
+                        () -> { }))
+                .toArray(CompletableFuture[]::new);
+        return CompletableFuture.allOf(closures)
+                .whenComplete((ignored, throwable) -> main.getPInfo().clearInvs());
     }
 
     public RTPInventory_Defaults getInv(RTP_INV_SETTINGS type) {

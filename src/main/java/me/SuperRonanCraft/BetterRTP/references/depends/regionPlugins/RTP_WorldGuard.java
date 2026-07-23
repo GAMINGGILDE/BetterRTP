@@ -13,16 +13,16 @@ public class RTP_WorldGuard implements RegionPluginCheck {
     // Worldguard (v7.0.4 B1), WorldEdit (v7.2.0 B5)
     // https://dev.bukkit.org/projects/worldguard
     public boolean check(Location loc) {
-        boolean result = true;
-        if (REGIONPLUGINS.WORLDGUARD.isEnabled())
+        if (REGIONPLUGINS.WORLDGUARD.isEnabled()) {
             try {
                 RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
                 RegionQuery query = container.createQuery();
                 ApplicableRegionSet set = query.getApplicableRegions(BukkitAdapter.adapt(loc));
-                result = set.size() == 0;
-            } catch (Exception e) {
-               e.printStackTrace();
+                return set.size() == 0;
+            } catch (RuntimeException exception) {
+                return RegionPluginFailureHandler.reject("WorldGuard", loc, exception);
             }
-        return result;
+        }
+        return true;
     }
 }

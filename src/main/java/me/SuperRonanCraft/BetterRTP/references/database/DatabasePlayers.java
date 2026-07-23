@@ -86,8 +86,9 @@ public class DatabasePlayers extends SQLite {
                 }};
                 sqlUpdate(sql, params);
             });
-        } catch (Exception ex) {
-            ex.printStackTrace();
+        } catch (RuntimeException exception) {
+            BetterRTP.getInstance().getLogger().log(
+                    Level.SEVERE, "Unable to schedule saving RTP player data", exception);
         }
     }
 

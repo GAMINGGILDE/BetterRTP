@@ -37,7 +37,7 @@ public class CmdQueue implements RTPCommand {
 
     public void execute(CommandSender sendi, String label, String[] args) {
         Player p = (Player) sendi;
-        AsyncHandler.sync(() -> {
+        AsyncHandler.global(() -> {
             List<World> worlds;
             if (args.length > 1) {
                 World world = Bukkit.getWorld(args[1]);

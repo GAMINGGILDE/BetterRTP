@@ -5,38 +5,37 @@ import me.SuperRonanCraft.BetterRTP.references.file.FileOther;
 
 public class Settings {
 
-    @Getter private boolean debug;
-    @Getter private boolean delayEnabled;
-    @Getter private int delayTime;
-    @Getter private boolean rtpOnFirstJoin_Enabled;
-    @Getter private String rtpOnFirstJoin_World;
-    @Getter private boolean rtpOnFirstJoin_SetAsRespawn;
-    @Getter private boolean statusMessages; //Send more information about rtp
-    @Getter private int preloadRadius; //Amount of chunks to load around a safe rtp location (clamped (0 - 16))
+    @Getter private volatile boolean debug;
+    @Getter private volatile boolean delayEnabled;
+    @Getter private volatile int delayTime;
+    @Getter private volatile boolean rtpOnFirstJoin_Enabled;
+    @Getter private volatile String rtpOnFirstJoin_World;
+    @Getter private volatile boolean rtpOnFirstJoin_SetAsRespawn;
+    @Getter private volatile boolean statusMessages; //Send more information about rtp
     //Dependencies
     private final SoftDepends depends = new SoftDepends();
-    @Getter private boolean locationEnabled;
-    @Getter private boolean useLocationIfAvailable;
-    @Getter private boolean locationNeedPermission;
-    @Getter private boolean useLocationsInSameWorld;
-    @Getter private boolean permissionGroupEnabled;
-    @Getter private boolean queueEnabled;
-    @Getter private int chunkLoadTimeoutSeconds;
-    @Getter private int teleportTimeoutSeconds;
+    @Getter private volatile boolean locationEnabled;
+    @Getter private volatile boolean useLocationIfAvailable;
+    @Getter private volatile boolean locationNeedPermission;
+    @Getter private volatile boolean useLocationsInSameWorld;
+    @Getter private volatile boolean permissionGroupEnabled;
+    @Getter private volatile boolean queueEnabled;
+    @Getter private volatile int chunkLoadTimeoutSeconds;
+    @Getter private volatile int teleportTimeoutSeconds;
     //Placeholders
-    @Getter private String placeholder_true;
-    @Getter private String placeholder_nopermission;
-    @Getter private String placeholder_cooldown;
-    @Getter private String placeholder_balance;
-    @Getter private String placeholder_hunger;
-    @Getter private String placeholder_timeDays;
-    @Getter private String placeholder_timeHours;
-    @Getter private String placeholder_timeMinutes;
-    @Getter private String placeholder_timeSeconds;
-    @Getter private String placeholder_timeZero;
-    @Getter private String placeholder_timeInf;
-    @Getter private String placeholder_timeSeparator_middle;
-    @Getter private String placeholder_timeSeparator_last;
+    @Getter private volatile String placeholder_true;
+    @Getter private volatile String placeholder_nopermission;
+    @Getter private volatile String placeholder_cooldown;
+    @Getter private volatile String placeholder_balance;
+    @Getter private volatile String placeholder_hunger;
+    @Getter private volatile String placeholder_timeDays;
+    @Getter private volatile String placeholder_timeHours;
+    @Getter private volatile String placeholder_timeMinutes;
+    @Getter private volatile String placeholder_timeSeconds;
+    @Getter private volatile String placeholder_timeZero;
+    @Getter private volatile String placeholder_timeInf;
+    @Getter private volatile String placeholder_timeSeparator_middle;
+    @Getter private volatile String placeholder_timeSeparator_last;
 
 
     public void load() { //Load Settings
@@ -47,7 +46,6 @@ public class Settings {
         rtpOnFirstJoin_Enabled = config.getBoolean("Settings.RtpOnFirstJoin.Enabled");
         rtpOnFirstJoin_World = config.getString("Settings.RtpOnFirstJoin.World");
         rtpOnFirstJoin_SetAsRespawn = config.getBoolean("Settings.RtpOnFirstJoin.SetAsRespawn");
-        preloadRadius = config.getInt("Settings.PreloadRadius");
         statusMessages = config.getBoolean("Settings.StatusMessages");
         permissionGroupEnabled = config.getBoolean("PermissionGroup.Enabled");
         queueEnabled = config.getBoolean("Settings.Queue.Enabled");

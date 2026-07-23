@@ -26,9 +26,9 @@ import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
 
 public class CooldownHandler {
 
-    @Getter boolean enabled, loaded, cooldownByWorld;
-    @Getter private int defaultCooldownTime; //Global Cooldown timer
-    private int lockedAfter; //Rtp's before being locked
+    @Getter volatile boolean enabled, loaded, cooldownByWorld;
+    @Getter private volatile int defaultCooldownTime; //Global Cooldown timer
+    private volatile int lockedAfter; //Rtp's before being locked
     private final Set<UUID> downloading = ConcurrentHashMap.newKeySet();
     private final AtomicLong generation = new AtomicLong();
 
@@ -66,7 +66,7 @@ public class CooldownHandler {
                queueDownload(runId);
                return;
             }
-            AsyncHandler.sync(() -> {
+            AsyncHandler.global(() -> {
                 if (generation.get() != runId) {
                     return;
                 }
@@ -128,11 +128,15 @@ public class CooldownHandler {
         UUID uuid = playerData.getUuid();
         int rtpCount = playerData.getRtpCount();
         long globalCooldown = playerData.getGlobalCooldown();
+        CooldownData cooldownSnapshot = data == null
+                ? null : new CooldownData(data.getUuid(), data.getTime());
+        DatabaseCooldowns cooldownDatabase = worldName == null ? null : getDatabaseWorlds();
+        DatabasePlayers playerDatabase = DatabaseHandler.getPlayers();
         AsyncHandler.async(() -> {
-                if (worldName != null && data != null && getDatabaseWorlds() != null) {
-                    getDatabaseWorlds().setCooldown(worldName, data);
+                if (worldName != null && cooldownSnapshot != null && cooldownDatabase != null) {
+                    cooldownDatabase.setCooldown(worldName, cooldownSnapshot);
                 }
-                DatabaseHandler.getPlayers().setData(uuid, rtpCount, globalCooldown);
+                playerDatabase.setData(uuid, rtpCount, globalCooldown);
             });
     }
 
@@ -152,7 +156,7 @@ public class CooldownHandler {
 
         UUID uuid = player.getUniqueId();
         downloading.add(uuid);
-        AsyncHandler.sync(() -> {
+        AsyncHandler.global(() -> {
             if (generation.get() != runId) {
                 downloading.remove(uuid);
                 return;

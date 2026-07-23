@@ -45,7 +45,7 @@ public class CmdLocation implements RTPCommand, RTPCommandHelpable {
                 sendi.sendMessage("Console is not able to execute this command! Try '/rtp help'");
         } else if (args.length == 3 && PermissionNode.RTP_OTHER.check(sendi)) {
             Player p = Bukkit.getPlayer(args[2]);
-            if (p != null && p.isOnline()) {
+            if (p != null) {
                 for (Map.Entry<String, RTPWorld> location : getLocations(sendi, null).entrySet()) {
                     if (location.getKey().equalsIgnoreCase(args[1].toLowerCase())) {
                         HelperRTP.tp(p, sendi, null, null, RTP_TYPE.COMMAND, false, false, (WorldLocation) location.getValue());
@@ -53,9 +53,7 @@ public class CmdLocation implements RTPCommand, RTPCommandHelpable {
                     }
                 }
                 usage(sendi, label);
-            } else if (p != null)
-                MessagesCore.NOTONLINE.send(sendi, args[1]);
-            else
+            } else
                 usage(sendi, label);
         } else
             usage(sendi, label);

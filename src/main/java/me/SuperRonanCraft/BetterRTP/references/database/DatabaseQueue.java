@@ -8,6 +8,7 @@ import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueHandler;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueLimits;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueRange;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueueRepository;
+import me.SuperRonanCraft.BetterRTP.references.rtpinfo.QueuePosition;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.RTPWorld;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -113,8 +114,9 @@ public class DatabaseQueue extends SQLite implements QueueRepository {
                     close(ps, rs, conn);
                 }
             }).get();
-        } catch (Exception ex) {
-            ex.printStackTrace();
+        } catch (Exception exception) {
+            BetterRTP.getInstance().getLogger().log(
+                    Level.SEVERE, "Unable to query RTP queue entries", exception);
         }
         return queueDataList;
     }
@@ -146,12 +148,12 @@ public class DatabaseQueue extends SQLite implements QueueRepository {
 
     //Set a queue to save
     @Override
-    public QueueData save(Location location) {
+    public QueueData save(QueuePosition position) {
         return addQueue(
-                location,
-                location.getWorld().getName(),
-                location.getBlockX(),
-                location.getBlockZ());
+                position.toLocation(),
+                position.worldName(),
+                position.blockX(),
+                position.blockZ());
     }
 
     public QueueData addQueue(Location loc, String worldName, int blockX, int blockZ) {
@@ -167,8 +169,9 @@ public class DatabaseQueue extends SQLite implements QueueRepository {
                 int databaseId = createQueue(sql, params);
                 return databaseId >= 0 ? new QueueData(loc, System.currentTimeMillis(), databaseId) : null;
             }).get();
-        } catch (Exception ex) {
-            ex.printStackTrace();
+        } catch (Exception exception) {
+            BetterRTP.getInstance().getLogger().log(
+                    Level.SEVERE, "Unable to store an RTP queue entry", exception);
             return null;
         }
     }
@@ -209,18 +212,19 @@ public class DatabaseQueue extends SQLite implements QueueRepository {
                 List<Object> params = List.of(blockX, blockZ, worldName);
                 return sqlUpdate(sql, params);
             }).get();
-        } catch (Exception ex) {
-            ex.printStackTrace();
+        } catch (Exception exception) {
+            BetterRTP.getInstance().getLogger().log(
+                    Level.SEVERE, "Unable to remove an RTP queue entry", exception);
             return false;
         }
     }
 
     @Override
-    public boolean remove(Location location) {
+    public boolean remove(QueuePosition position) {
         return removeLocation(
-                location.getWorld().getName(),
-                location.getBlockX(),
-                location.getBlockZ());
+                position.worldName(),
+                position.blockX(),
+                position.blockZ());
     }
 
     @Getter

@@ -10,13 +10,13 @@ public class RTP_Towny implements RegionPluginCheck {
     // Towny (v0.96.1.11)
     // https://www.spigotmc.org/resources/towny.72694/
     public boolean check(Location loc) {
-        boolean result = true;
-        if (REGIONPLUGINS.TOWNY.isEnabled())
+        if (REGIONPLUGINS.TOWNY.isEnabled()) {
             try {
-                result = TownyAPI.getInstance().isWilderness(loc);
-            } catch (Exception e) {
-                e.printStackTrace();
+                return TownyAPI.getInstance().isWilderness(loc);
+            } catch (RuntimeException exception) {
+                return RegionPluginFailureHandler.reject("Towny", loc, exception);
             }
-        return result;
+        }
+        return true;
     }
 }

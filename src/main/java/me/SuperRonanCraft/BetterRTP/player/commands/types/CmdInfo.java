@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Particle;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -31,10 +32,10 @@ import me.SuperRonanCraft.BetterRTP.references.messages.MessagesHelp;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldDefault;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPlayer;
 import me.SuperRonanCraft.BetterRTP.references.web.LogUploader;
+import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
-import xyz.xenondevs.particle.ParticleEffect;
 
 public class CmdInfo implements RTPCommand, RTPCommandHelpable {
 
@@ -66,26 +67,21 @@ public class CmdInfo implements RTPCommand, RTPCommandHelpable {
                 if (args.length > 3) {
                     player = Bukkit.getPlayer(args[3]);
                     if (player == null) {
-                        MessagesCore.NOTONLINE.send(sendi, args[2]);
+                        MessagesCore.NOTONLINE.send(sendi, args[3]);
                         return;
                     }
                 }
-                sendInfoWorld(sendi, infoGetWorld(sendi, world, player, null), label, args);
+                sendPersonalizedWorldInfo(sendi, world, player, label, args);
             } else if (args[1].equalsIgnoreCase(CmdInfoSub.PLAYER.name())) {
-                World world = null;
                 Player player = null;
                 if (args.length > 2) {
                     player = Bukkit.getPlayer(args[2]);
-                    if (player != null)
-                        world = player.getWorld();
                 }
                 if (player == null) {
                     MessagesCore.NOTONLINE.send(sendi, args.length > 2 ? args[2] : "NULL");
                     return;
                 }
-                if (world == null)
-                    world = player.getWorld();
-                sendInfoWorld(sendi, infoGetWorld(sendi, world, player, null), label, args);
+                sendPersonalizedWorldInfo(sendi, null, player, label, args);
             }
         } else
             infoWorld(sendi, label, args);
@@ -100,12 +96,33 @@ public class CmdInfo implements RTPCommand, RTPCommandHelpable {
         PARTICLES, SHAPES, POTION_EFFECTS, WORLD, PLAYER
     }
 
+    private void sendPersonalizedWorldInfo(
+            CommandSender requester, World world, Player viewedPlayer,
+            String label, String[] args) {
+        if (viewedPlayer == null || viewedPlayer == requester) {
+            World selectedWorld = world != null ? world : viewedPlayer.getWorld();
+            sendInfoWorld(
+                    requester, infoGetWorld(requester, selectedWorld, viewedPlayer, null), label, args);
+            return;
+        }
+        String viewedPlayerName = viewedPlayer.getName();
+        AsyncHandler.syncAtEntity(viewedPlayer, () -> {
+            World selectedWorld = world != null ? world : viewedPlayer.getWorld();
+            List<String> info = infoGetWorld(
+                    viewedPlayer, selectedWorld, viewedPlayer, null);
+            sendInfoWorld(requester, info, label, args);
+        }, () -> MessagesCore.NOTONLINE.send(requester, viewedPlayerName));
+    }
+
     //Particles
     private void infoParticles(CommandSender sendi) {
         List<String> info = new ArrayList<>();
         // BetterRTP pl = BetterRTP.getInstance();
 
-        for (ParticleEffect eff : ParticleEffect.VALUES) {
+        for (Particle eff : Particle.values()) {
+            if (eff.getDataType() != Void.class) {
+                continue;
+            }
             if (info.isEmpty() || info.size() % 2 == 0) {
                 info.add("&7" + eff.name() + "&r");
             } else
@@ -135,6 +152,14 @@ public class CmdInfo implements RTPCommand, RTPCommandHelpable {
 
     //World
     public static void sendInfoWorld(CommandSender sendi, List<String> list, String label, String[] args) { //Send info
+        List<String> output = new ArrayList<>(list);
+        String[] commandArgs = args.clone();
+        AsyncHandler.syncAtSender(
+                sendi, () -> sendInfoWorldNow(sendi, output, label, commandArgs));
+    }
+
+    private static void sendInfoWorldNow(
+            CommandSender sendi, List<String> list, String label, String[] args) {
         boolean upload = Arrays.asList(args).contains("_UPLOAD_");
         list.add(0, "&e&m-----&6 BetterRTP &8| Info &e&m-----");
         list.forEach(str -> list.set(list.indexOf(str), Message.color(str)));
@@ -154,7 +179,7 @@ public class CmdInfo implements RTPCommand, RTPCommandHelpable {
         } else {
             list.add(0, "Command: " + cmd);
             list.forEach(str -> list.set(list.indexOf(str), Message.stripColor(str)));
-            me.SuperRonanCraft.BetterRTP.versions.AsyncHandler.async(() -> {
+            AsyncHandler.async(() -> {
                 String key = LogUploader.post(list);
                 if (key == null) {
                     Message.sms(sendi, new ArrayList<>(Collections.singletonList("&cAn error occured attempting to upload log!")), null);

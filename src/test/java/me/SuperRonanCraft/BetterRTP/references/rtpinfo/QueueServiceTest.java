@@ -52,6 +52,19 @@ class QueueServiceTest {
         assertFalse(repository.queried);
     }
 
+    @Test
+    void capturesQueuePersistenceCoordinatesBeforeAsyncWork() {
+        World world = world();
+        QueuePosition position = QueuePosition.capture(new Location(world, 12.9, 70, -4.1));
+
+        assertSame(world, position.world());
+        assertEquals("world", position.worldName());
+        assertEquals(12, position.blockX());
+        assertEquals(-5, position.blockZ());
+        assertEquals(12, position.toLocation().getBlockX());
+        assertEquals(-5, position.toLocation().getBlockZ());
+    }
+
     private static QueueData data(World world, int x, int z, int id) {
         return new QueueData(new Location(world, x, 64, z), 1L, id);
     }
@@ -119,8 +132,8 @@ class QueueServiceTest {
             return databaseId == claimableId;
         }
 
-        @Override public QueueData save(Location location) { return null; }
+        @Override public QueueData save(QueuePosition position) { return null; }
 
-        @Override public boolean remove(Location location) { return false; }
+        @Override public boolean remove(QueuePosition position) { return false; }
     }
 }

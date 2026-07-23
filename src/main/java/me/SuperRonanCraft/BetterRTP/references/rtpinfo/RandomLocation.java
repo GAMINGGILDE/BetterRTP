@@ -146,9 +146,10 @@ public class RandomLocation {
                     Biome biome = snapshot.getBiome(8, maxy, 8);
                     BetterRTP.getInstance().getDatabaseHandler().getDatabaseChunks().addChunk(chunk, maxy, biome);
                     cacheTask(world, goal, start, xat, zat);
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                    throw new RuntimeException();
+                } catch (RuntimeException exception) {
+                    BetterRTP.getInstance().getLogger().log(
+                            java.util.logging.Level.SEVERE,
+                            "Chunk cache test failed at " + location, exception);
                 }
             }));
         });

@@ -137,7 +137,7 @@ public class QueueGenerator {
     }
 
     private void collectTargets(long runId) {
-        AsyncHandler.sync(() -> {
+        AsyncHandler.global(() -> {
             if (isObsolete(runId)) {
                 return;
             }
@@ -261,8 +261,9 @@ public class QueueGenerator {
         String worldName = safeLocation.getWorld().getName();
         int blockX = safeLocation.getBlockX();
         int blockZ = safeLocation.getBlockZ();
+        QueuePosition position = QueuePosition.capture(safeLocation);
         AsyncHandler.async(() -> {
-            QueueData data = queueService.save(safeLocation);
+            QueueData data = queueService.save(position);
             if (data != null) {
                 debug.accept("Queue position generated: id=" + target.id()
                         + ", databaseId=" + data.getDatabaseId()

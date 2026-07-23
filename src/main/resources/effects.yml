@@ -34,8 +34,8 @@ Titles:
     SendMessage: true
 Particles: #Use `rtp info particles` for a list of particles
   Enabled: true
-  Type: #list of particle types at https://github.com/ByteZ1337/ParticleLib/blob/master/src/main/java/xyz/xenondevs/particle/ParticleEffect.java
-    - 'EXPLOSION_NORMAL'
+  Type: # Particle names supported by the current Paper API; use `/rtp info particles`
+    - 'POOF'
     - 'CRIT'
   Shape: 'EXPLODE' #Types available are "Scan, Teleport and Explode", or use `/rtp info shapes` for a list of shapes
 Invincible: #Amount of time a player should not take damage for

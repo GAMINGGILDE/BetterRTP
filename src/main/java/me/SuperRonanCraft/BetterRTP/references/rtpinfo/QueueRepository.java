@@ -1,7 +1,5 @@
 package me.SuperRonanCraft.BetterRTP.references.rtpinfo;
 
-import org.bukkit.Location;
-
 import java.util.List;
 
 /** Persistence boundary for queued RTP locations. Calls are blocking. */
@@ -13,7 +11,7 @@ public interface QueueRepository {
 
     boolean claim(int databaseId);
 
-    QueueData save(Location location);
+    QueueData save(QueuePosition position);
 
-    boolean remove(Location location);
+    boolean remove(QueuePosition position);
 }

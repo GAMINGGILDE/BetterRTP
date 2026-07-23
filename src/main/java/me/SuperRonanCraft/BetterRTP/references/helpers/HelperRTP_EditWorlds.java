@@ -32,8 +32,10 @@ public class HelperRTP_EditWorlds {
         Object value;
         try {
             value = cmd.getResult(val);
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (RuntimeException exception) {
+            BetterRTP.getInstance().getLogger().log(
+                    java.util.logging.Level.WARNING,
+                    "Unable to parse edited default-world value '" + val + "'", exception);
             MessagesCore.EDIT_ERROR.send(sendi);
             return false;
         }
@@ -55,8 +57,10 @@ public class HelperRTP_EditWorlds {
         Object value;
         try {
             value = cmd.getResult(val);
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (RuntimeException exception) {
+            BetterRTP.getInstance().getLogger().log(
+                    java.util.logging.Level.WARNING,
+                    "Unable to parse edited custom-world value '" + val + "'", exception);
             MessagesCore.EDIT_ERROR.send(sendi);
             return;
         }
@@ -80,8 +84,10 @@ public class HelperRTP_EditWorlds {
         Object value;
         try {
             value = cmd.getResult(val);
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (RuntimeException exception) {
+            BetterRTP.getInstance().getLogger().log(
+                    java.util.logging.Level.WARNING,
+                    "Unable to parse edited location value '" + val + "'", exception);
             MessagesCore.EDIT_ERROR.send(sendi);
             return;
         }
@@ -109,8 +115,7 @@ public class HelperRTP_EditWorlds {
         WORLD_TYPE type;
         try {
             type = WORLD_TYPE.valueOf(val.toUpperCase(Locale.ROOT));
-        } catch (Exception e) {
-            //e.printStackTrace();
+        } catch (IllegalArgumentException exception) {
             MessagesCore.EDIT_ERROR.send(sendi);
             return;
         }

@@ -122,7 +122,7 @@ Führe vor dem Erstellen eines Pull Requests folgenden Befehl aus:
 
 BetterRTP wurde ursprünglich von [SuperRonanCraft](https://github.com/SuperRonanCraft) entwickelt und gepflegt. Dieser Fork wird von [Christian F](https://github.com/CFPlusPlus) für [GAMINGGILDE](https://github.com/GAMINGGILDE) betreut.
 
-Das Plugin verwendet direkt die Scheduler- und Teleport-APIs von Paper und Folia. [ParticleLib](https://github.com/ByteZ1337/ParticleLib) wird für Partikeleffekte in die Plugin-JAR eingebettet. Die unterstützten optionalen Integrationen sind in der `pom.xml` aufgeführt.
+Das Plugin verwendet direkt die Scheduler-, Teleport- und Partikel-APIs von Paper und Folia. Die unterstützten optionalen Integrationen sind in der `pom.xml` aufgeführt.
 
 Die ursprüngliche BetterRTP-Ressource ist weiterhin auf [SpigotMC](https://www.spigotmc.org/resources/36081/) verfügbar.
 

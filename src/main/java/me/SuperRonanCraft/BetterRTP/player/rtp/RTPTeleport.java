@@ -81,7 +81,7 @@ public class RTPTeleport {
                                 session.completeSuccessfully();
                             }
                         },
-                        () -> AsyncHandler.sync(session::finish));
+                        () -> AsyncHandler.global(session::finish));
             });
         } catch (Exception e) {
             session.finish();
@@ -93,7 +93,7 @@ public class RTPTeleport {
         AsyncHandler.syncAtEntity(
                 player,
                 session::finish,
-                () -> AsyncHandler.sync(session::finish));
+                () -> AsyncHandler.global(session::finish));
     }
 
     private void notifyRequester(CommandSender sender, Player teleportedPlayer, Location location,
@@ -106,7 +106,7 @@ public class RTPTeleport {
         if (sender instanceof Player requestingPlayer) {
             AsyncHandler.syncAtEntity(requestingPlayer, notification);
         } else {
-            AsyncHandler.sync(notification);
+            AsyncHandler.global(notification);
         }
     }
 

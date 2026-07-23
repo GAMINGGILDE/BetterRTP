@@ -1,7 +1,9 @@
 package me.SuperRonanCraft.BetterRTP.player.rtp;
 
-import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -9,6 +11,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
 import lombok.Getter;
+import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import me.SuperRonanCraft.BetterRTP.references.customEvents.RTP_SettingUpEvent;
 import me.SuperRonanCraft.BetterRTP.references.file.FileOther;
 import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP;
@@ -37,16 +40,16 @@ public class RTP {
     @Getter private final RTPTeleport teleport;
     @Getter private final RTPSessionManager sessions = new RTPSessionManager();
     //Cache
-    public final HashMap<String, String> overriden = new HashMap<>();
-    @Getter List<String> disabledWorlds, blockList;
-    int maxAttempts, delayTime;
-    boolean cancelOnMove, cancelOnDamage;
-    public final HashMap<String, WORLD_TYPE> world_type = new HashMap<>();
+    public final ConcurrentMap<String, String> overriden = new ConcurrentHashMap<>();
+    @Getter volatile List<String> disabledWorlds = List.of(), blockList = List.of();
+    volatile int maxAttempts, delayTime;
+    volatile boolean cancelOnMove, cancelOnDamage;
+    public final ConcurrentMap<String, WORLD_TYPE> world_type = new ConcurrentHashMap<>();
     //Worlds
     @Getter private final WorldDefault RTPdefaultWorld = new WorldDefault();
-    @Getter private final HashMap<String, RTPWorld> RTPcustomWorld = new HashMap<>();
-    @Getter private final HashMap<String, RTPWorld> RTPworldLocations = new HashMap<>();
-    @Getter private final HashMap<String, PermissionGroup> permissionGroups = new HashMap<>();
+    @Getter private final ConcurrentMap<String, RTPWorld> RTPcustomWorld = new ConcurrentHashMap<>();
+    @Getter private final ConcurrentMap<String, RTPWorld> RTPworldLocations = new ConcurrentHashMap<>();
+    @Getter private final ConcurrentMap<String, PermissionGroup> permissionGroups = new ConcurrentHashMap<>();
 
     /** Compatibility constructor for lifecycle-only use outside the running plugin. */
     public RTP() {
@@ -72,12 +75,12 @@ public class RTP {
     public void load() {
         sessions.cancelAll();
         FileOther.FILETYPE config = FileOther.FILETYPE.CONFIG;
-        disabledWorlds = config.getStringList("DisabledWorlds");
+        disabledWorlds = List.copyOf(config.getStringList("DisabledWorlds"));
         maxAttempts = config.getInt("Settings.MaxAttempts");
         delayTime = config.getInt("Settings.Delay.Time");
         cancelOnMove = config.getBoolean("Settings.Delay.CancelOnMove");
         cancelOnDamage = config.getBoolean("Settings.Delay.CancelOnDamage");
-        blockList = config.getStringList("BlacklistedBlocks");
+        blockList = List.copyOf(config.getStringList("BlacklistedBlocks"));
         //Overrides
         RTPLoader.loadOverrides(overriden);
         //WorldType
@@ -104,10 +107,16 @@ public class RTP {
     }
 
     public void start(RTPSetupInformation setup_info) {
+        if (isReloading()) {
+            return;
+        }
         start(HelperRTP.getPlayerWorld(setup_info));
     }
 
     public void start(WorldPlayer pWorld) {
+        if (isReloading()) {
+            return;
+        }
         RTP_SettingUpEvent setup = new RTP_SettingUpEvent(pWorld.getPlayer());
         Bukkit.getPluginManager().callEvent(setup);
         if (setup.isCancelled())
@@ -141,6 +150,14 @@ public class RTP {
 
     public void shutdown() {
         sessions.cancelAll();
+    }
+
+    public CompletableFuture<Void> shutdownForReload() {
+        return sessions.cancelAllOnEntitySchedulers();
+    }
+
+    private boolean isReloading() {
+        return eventOwner instanceof BetterRTP plugin && plugin.isReloading();
     }
 
     DepEconomy economy() { return economy; }

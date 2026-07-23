@@ -1,6 +1,5 @@
 package me.SuperRonanCraft.BetterRTP.player.rtp;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -19,7 +18,7 @@ import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldLocation;
 
 public class RTPLoader {
 
-    static void loadWorlds(@NotNull WorldDefault defaultWorld, @NotNull HashMap<String, RTPWorld> customWorlds) {
+    static void loadWorlds(@NotNull WorldDefault defaultWorld, @NotNull Map<String, RTPWorld> customWorlds) {
         defaultWorld.load();
         customWorlds.clear();
         BetterRTP.debug("Loading Custom Worlds...");
@@ -40,12 +39,14 @@ public class RTPLoader {
                     } else
                         BetterRTP.debug("[WARN] - Custom World '" + world + "' was not registered because world does NOT exist");
                 }
-        } catch (Exception e) {
-            //No Custom Worlds
+        } catch (RuntimeException exception) {
+            getPl().getLogger().log(
+                    java.util.logging.Level.SEVERE,
+                    "Unable to load custom-world configuration", exception);
         }
     }
 
-    static void loadOverrides(@NotNull HashMap<String, String> overriden) {
+    static void loadOverrides(@NotNull Map<String, String> overriden) {
         BetterRTP.debug("Loading Overrides...");
         overriden.clear();
         try {
@@ -59,12 +60,14 @@ public class RTPLoader {
                     if (Bukkit.getWorld(entry.getValue().toString()) == null)
                         getPl().getLogger().warning("The world `" + entry.getValue() + "` doesn't seem to exist! Please update `" + entry.getKey() + "'s` override! Maybe there are capital letters?");
                 }
-        } catch (Exception e) {
-            //No Overrides
+        } catch (RuntimeException exception) {
+            getPl().getLogger().log(
+                    java.util.logging.Level.SEVERE,
+                    "Unable to load world overrides", exception);
         }
     }
 
-    static void loadWorldTypes(@NotNull HashMap<String, WORLD_TYPE> world_type) {
+    static void loadWorldTypes(@NotNull Map<String, WORLD_TYPE> world_type) {
         BetterRTP.debug("Loading World Types...");
         world_type.clear();
         try {
@@ -94,13 +97,14 @@ public class RTPLoader {
                     //        getPl().getLogger().info("- World Type failed for '" + entry.getKey() + "' is it loaded?");
                     //}*/
                 }
-        } catch (Exception e) {
-            e.printStackTrace();
-            //No World Types
+        } catch (RuntimeException exception) {
+            getPl().getLogger().log(
+                    java.util.logging.Level.SEVERE,
+                    "Unable to load configured world types", exception);
         }
     }
 
-    static void loadLocations(@NotNull HashMap<String, RTPWorld> worlds) {
+    static void loadLocations(@NotNull Map<String, RTPWorld> worlds) {
         worlds.clear();
         FileOther.FILETYPE config = FileOther.FILETYPE.LOCATIONS;
         if (!BetterRTP.getInstance().getSettings().isLocationEnabled())
@@ -117,7 +121,7 @@ public class RTPLoader {
             }
     }
 
-    static void loadPermissionGroups(@NotNull HashMap<String, PermissionGroup> permissionGroup) {
+    static void loadPermissionGroups(@NotNull Map<String, PermissionGroup> permissionGroup) {
         permissionGroup.clear();
         FileOther.FILETYPE config = FileOther.FILETYPE.CONFIG;
         if (!getPl().getSettings().isPermissionGroupEnabled())
@@ -130,8 +134,10 @@ public class RTPLoader {
                     String group = entry.getKey().toString();
                     permissionGroup.put(group, new PermissionGroup(entry));
                 }
-        } catch (Exception e) {
-            //No Permission Groups
+        } catch (RuntimeException exception) {
+            getPl().getLogger().log(
+                    java.util.logging.Level.SEVERE,
+                    "Unable to load permission groups", exception);
         }
     }
 

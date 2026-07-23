@@ -42,8 +42,9 @@ public class RTPLogger {
             //plugin.getLogger().addHandler(consoleHandler_logger);
             //consoleHandler_rtp = new MyConsole(this.logger, plugin.getName());
             //plugin.getLogger().addHandler(consoleHandler_rtp);
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException exception) {
+            plugin.getLogger().log(
+                    Level.SEVERE, "Unable to initialize the BetterRTP file logger", exception);
         }
     }
 

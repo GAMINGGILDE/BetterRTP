@@ -70,11 +70,54 @@ fi
 grep -F '[BetterRTP] Enabling BetterRTP' "${server_dir}/server.log"
 grep -F '[BetterRTP] Configuration validation completed without errors.' "${server_dir}/server.log"
 
+printf 'betterrtp version\n' >&3
+printf 'betterrtp info shapes\n' >&3
+
+plugin_log="${server_dir}/plugins/BetterRTP/log.txt"
+runtime_ready=false
+for _ in $(seq 1 90); do
+  command_ready=false
+  queue_ready=false
+  if [[ -f "${plugin_log}" ]] \
+      && grep -Fq 'CONSOLE executed: /betterrtp version' "${plugin_log}" \
+      && grep -Fq 'CONSOLE executed: /betterrtp info shapes' "${plugin_log}"; then
+    command_ready=true
+  fi
+  if [[ -f "${plugin_log}" ]] \
+      && grep -Eq 'Queue position generated:|RTP location queues are ready\.' \
+      "${plugin_log}"; then
+    queue_ready=true
+  fi
+  if [[ "${command_ready}" == true && "${queue_ready}" == true ]]; then
+    runtime_ready=true
+    break
+  fi
+  if ! kill -0 "${server_pid}" 2>/dev/null; then
+    echo "${server_name} terminated during the runtime smoke test" >&2
+    cat "${server_dir}/server.log" >&2
+    exit 1
+  fi
+  sleep 1
+done
+
+if [[ "${runtime_ready}" != true ]]; then
+  echo "${server_name} did not complete BetterRTP runtime checks within 90 seconds" >&2
+  cat "${server_dir}/server.log" >&2
+  exit 1
+fi
+
 if grep -Eqi \
-  'Error occurred while enabling BetterRTP|Could not load.+BetterRTP|Exception.+BetterRTP|Thread failed' \
-  "${server_dir}/server.log"; then
+  'Error occurred while enabling BetterRTP|Could not load.+BetterRTP|Exception.+BetterRTP|Thread failed|Unhandled exception in|not owned by the current region|Tick region.*failed' \
+  "${server_dir}/server.log" "${plugin_log}"; then
   echo "${server_name} reported a BetterRTP startup error" >&2
   cat "${server_dir}/server.log" >&2
+  cat "${plugin_log}" >&2
+  exit 1
+fi
+
+if grep -Fq '[SEVERE]' "${plugin_log}"; then
+  echo "${server_name} reported a severe BetterRTP runtime error" >&2
+  cat "${plugin_log}" >&2
   exit 1
 fi
 

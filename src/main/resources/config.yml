@@ -18,8 +18,6 @@ Settings:
 
   ## Output to console some debugging info
   Debugger: false
-  ## Amount of chunks to preload around a safe location
-  PreloadRadius: 5
   ## Maximum amount of tries before BetterRTP gives up and sends a NotSafeMessage #
   MaxAttempts: 32
   RtpOnFirstJoin: # Will execute as console to override delays
@@ -36,6 +34,8 @@ Settings:
     Enabled: true
     Time: 5
     CancelOnMove: true
+    CancelOnDamage: false
+  StatusMessages: true # Send status messages while BetterRTP searches and teleports
   Queue:
     Enabled: true #Allows betterrtp to automatically queue up safe rtp locations prior to players executing `/rtp`
   Timeouts:

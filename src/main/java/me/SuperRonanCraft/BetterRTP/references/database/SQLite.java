@@ -37,9 +37,10 @@ public abstract class SQLite {
             try {
                 dataFolder.getParentFile().mkdir();
                 dataFolder.createNewFile();
-            } catch (IOException e) {
-                BetterRTP.getInstance().getLogger().log(Level.SEVERE, "File write error: " + dataFolder.getPath());
-                e.printStackTrace();
+            } catch (IOException exception) {
+                BetterRTP.getInstance().getLogger().log(
+                        Level.SEVERE, "File write error: " + dataFolder.getPath(), exception);
+                return null;
             }
         }
         try {
@@ -94,8 +95,9 @@ public abstract class SQLite {
                 if (connection != null) {
                     try {
                         connection.close();
-                    } catch (SQLException e) {
-                        e.printStackTrace();
+                    } catch (SQLException exception) {
+                        BetterRTP.getInstance().getLogger().log(
+                                Level.WARNING, "Unable to close the BetterRTP database", exception);
                     }
                 }
             }
@@ -216,7 +218,6 @@ public abstract class SQLite {
         } catch (SQLException ex) {
             BetterRTP.getInstance().getLogger().log(Level.SEVERE, Errors.sqlConnectionExecute(), ex);
             success = false;
-            ex.printStackTrace();
         } finally {
             close(ps, null, conn);
         }
