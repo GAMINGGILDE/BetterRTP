@@ -3,7 +3,6 @@ package me.SuperRonanCraft.BetterRTP.references.invs;
 import me.SuperRonanCraft.BetterRTP.references.invs.enums.RTPInventory_Defaults;
 import me.SuperRonanCraft.BetterRTP.BetterRTP;
 import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
 import me.SuperRonanCraft.BetterRTP.versions.AsyncHandler;
 
 import java.util.HashMap;

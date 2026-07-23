@@ -15,7 +15,6 @@ import me.SuperRonanCraft.BetterRTP.player.rtp.RTP_PlayerInfo;
 import me.SuperRonanCraft.BetterRTP.player.rtp.RTP_TYPE;
 import me.SuperRonanCraft.BetterRTP.references.PermissionNode;
 import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP;
-import me.SuperRonanCraft.BetterRTP.references.messages.Message;
 import me.SuperRonanCraft.BetterRTP.references.messages.MessagesCore;
 import me.SuperRonanCraft.BetterRTP.references.messages.MessagesUsage;
 
