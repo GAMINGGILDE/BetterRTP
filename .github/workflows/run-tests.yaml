@@ -67,6 +67,21 @@ jobs:
           name: BetterRTP-${{ github.sha }}
           path: artifacts
 
+      - name: Plugin-JAR ermitteln
+        id: plugin-jar
+        shell: bash
+        run: |
+          mapfile -t plugin_jars < <(
+            find artifacts -maxdepth 1 -type f -name 'BetterRTP-*.jar' -print
+          )
+          if (( ${#plugin_jars[@]} != 1 )); then
+            printf 'Expected exactly one BetterRTP JAR, found %d:\n' \
+              "${#plugin_jars[@]}" >&2
+            printf '  %s\n' "${plugin_jars[@]}" >&2
+            exit 1
+          fi
+          printf 'path=%s\n' "${plugin_jars[0]}" >> "${GITHUB_OUTPUT}"
+
       - name: ${{ matrix.server }} starten und BetterRTP prüfen
         shell: bash
         run: >-
@@ -74,4 +89,4 @@ jobs:
           "${{ matrix.server }}"
           "${{ matrix.url }}"
           "${{ matrix.sha256 }}"
-          artifacts/BetterRTP-4.0.0-SNAPSHOT.jar
+          "${{ steps.plugin-jar.outputs.path }}"
